@@ -1,0 +1,6 @@
+{
+  "packs": [
+    { "file": "test-basic.json", "id": "test-basic", "title": "시험용 문제 (계산·상식)", "subject": "시험용", "test": true }
+  ],
+  "gen": ["mul", "div", "mul2", "add", "sub", "dec", "frac"]
+}
