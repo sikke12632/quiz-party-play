@@ -21,7 +21,9 @@
       this.kv.set(m);
     }
     meta(p) {
-      return { id: p.id, title: p.title, subject: p.subject, grade: p.grade, count: p.questions.length, test: !!p.test, at: p.at || 0, source: p.source || '' };
+      const m = { id: p.id, title: p.title, subject: p.subject, grade: p.grade, count: p.questions.length, nChoice: p.questions.filter((q) => (q.type || 'choice') === 'choice').length, test: !!p.test, at: p.at || 0, source: p.source || '' };
+      for (const k of ['unit', 'unitTitle', 'topic', 'topicTitle', 'lessons', 'name', 'tb']) if (p[k] !== undefined) m[k] = p[k];
+      return m;
     }
     // 목록(문제 없이). 서버와 이 브라우저를 합치고, 이 브라우저에만 있는 것은 서버로 올린다
     async list() {

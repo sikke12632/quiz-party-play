@@ -32,7 +32,7 @@
     }
 
     /* ================= 판 만들기 / 이어 하기 ================= */
-    static async create(net, { cfg, packs, seed, tab, onUpdate, log }) {
+    static async create(net, { cfg, packs, seed, tab, onUpdate, log, label }) {
       const all = await net.find('qp_games', 'owner', net.uid);
       let code;
       for (let k = 0; k < 50; k++) {
@@ -54,6 +54,7 @@
         qs,
         test: packs.some((p) => p.test),
         packTitles: packs.map((p) => p.title),
+        range: label || '', // 고른 출제 범위 한 줄(TV·결과표에 적는다)
         phase: 'lobby',
         round: 0,
         seats: {},
@@ -65,7 +66,7 @@
         createdAt: net.now(),
       };
       ref.r = QP.rng(seed);
-      await net.set(G + gid, { code, owner: net.uid, refTab: ref.tab, phase: 'lobby', round: 0, endsAt: 0, cfg: ref.pubCfg(), board: [], ev: null, test: ref.S.test, packs: ref.S.packTitles, at: net.now() });
+      await net.set(G + gid, { code, owner: net.uid, refTab: ref.tab, phase: 'lobby', round: 0, endsAt: 0, cfg: ref.pubCfg(), board: [], ev: null, test: ref.S.test, packs: ref.S.packTitles, range: ref.S.range, at: net.now() });
       await ref.save();
       ref.listen();
       return ref;
@@ -356,7 +357,9 @@
       else this.reveal();
     }
     makeBoard() {
-      return QP.rankSeats(this.seatList()).map((s) => ({ sid: s.sid, nick: s.nick, av: s.av, gold: s.gold }));
+      const list = QP.rankSeats(this.seatList());
+      const golds = list.map((s) => s.gold);
+      return list.map((s) => ({ sid: s.sid, nick: s.nick, av: s.av, gold: s.gold, rank: QP.rankOfGold(s.gold, golds) }));
     }
     async startChest(resumed) {
       const S = this.S;
@@ -457,19 +460,23 @@
     async reveal() {
       const S = this.S;
       const ranked = QP.rankSeats(this.seatList());
-      const prevTop = (S.prevBoard || []).slice(0, 5);
+      const golds = ranked.map((s) => s.gold);
+      // 단상 = 금이 0보다 많은 아이 중 앞의 5명
+      const prevTop = (S.prevBoard || []).slice(0, QP.PODIUM);
       const prevLead = prevTop[0];
-      const board = ranked.map((s, i) => {
+      const top = ranked.filter((s) => s.gold > 0).slice(0, QP.PODIUM).map((s) => s.sid);
+      const board = ranked.map((s) => {
         const was = s.prevRank || 0;
+        const rank = QP.rankOfGold(s.gold, golds);
         let mv = 0;
-        if (was && was !== i + 1) mv = was - (i + 1);
-        const isNew = i < 5 && !prevTop.includes(s.sid) && S.round > 1;
-        s.rank = i + 1;
-        return { sid: s.sid, nick: s.nick, av: s.av, gold: s.gold, mv, nw: isNew ? 1 : 0 };
+        if (was && rank && was !== rank) mv = was - rank;
+        const isNew = top.includes(s.sid) && !prevTop.includes(s.sid) && S.round > 1;
+        s.rank = rank;
+        return { sid: s.sid, nick: s.nick, av: s.av, gold: s.gold, rank, mv, nw: isNew ? 1 : 0 };
       });
-      const ev = { lead: board[0] && board[0].sid !== prevLead && S.round > 0 ? board[0].sid : null, out: prevTop.filter((sid) => !board.slice(0, 5).some((b) => b.sid === sid)) };
+      const ev = { lead: top[0] && top[0] !== prevLead && S.round > 0 ? top[0] : null, out: prevTop.filter((sid) => !top.includes(sid)) };
       for (const s of ranked) s.prevRank = s.rank;
-      S.prevBoard = board.map((b) => b.sid);
+      S.prevBoard = top;
       S.board = board;
       const over = this.net.now() - S.startedAt >= QP.ms(S.cfg.minutes * 60);
       if (!over) this.prepareNext();
@@ -522,13 +529,13 @@
       qs.sort((a, b) => a.rate - b.rate);
       const kids = this.seatList()
         .sort((a, b) => a.num - b.num)
-        .map((s) => ({ num: s.num, nick: s.nick, rank: s.rank, gold: s.gold, served: s.hist.length, nAns: s.nAns, nOk: s.nOk, wrong: s.hist.filter((h) => h[1] !== 1).map((h) => h[0]) }));
-      return { qs, kids, rounds: S.round, packs: S.packTitles };
+        .map((s) => ({ num: s.num, nick: s.nick, rank: s.rank || '', gold: s.gold, served: s.hist.length, nAns: s.nAns, nOk: s.nOk, wrong: s.hist.filter((h) => h[1] !== 1).map((h) => h[0]) }));
+      return { qs, kids, rounds: S.round, packs: S.packTitles, range: S.range };
     }
     resultsCSV() {
       const R = this.results();
       const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
-      const lines = ['번호,별명,등수,금,나온 문제,낸 답,맞힌 수,정답률'];
+      const lines = [esc('출제 범위: ' + (R.range || R.packs.join(', '))), '', '번호,별명,등수,금,나온 문제,낸 답,맞힌 수,정답률'];
       for (const k of R.kids) lines.push([k.num, esc(k.nick), k.rank, k.gold, k.served, k.nAns, k.nOk, k.served ? Math.round((k.nOk / k.served) * 100) + '%' : ''].join(','));
       lines.push('', '문제,정답,나온 수,맞힌 수,정답률,묶음');
       for (const q of R.qs) lines.push([esc(q.q), esc(q.ans), q.n, q.ok, Math.round(q.rate * 100) + '%', esc(q.pack)].join(','));

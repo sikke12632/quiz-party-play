@@ -47,13 +47,38 @@
     t = t.replace(/[_\s]*(카훗|kahoot)[_\s]*/gi, ' ').replace(/_\d+$/, '');
     return t.replace(/[_\s]+/g, ' ').trim();
   }
+  // 「묶음 목록」: 시트 이름 | 과목 | 학년 | 단원 | 주제 | 차시 | 교과서 쪽 | 출처·메모 (칸 이름으로 찾는다. 예전 양식은 단원~교과서 쪽 칸이 없다)
+  const CIRCLED = '➊➋➌➍➎➏➐➑➒➓';
+  const CIRCLED2 = '①②③④⑤⑥⑦⑧⑨⑩';
+  // 「2. 달라지는 시대…」 → {n:2, t:'달라지는 시대…'}, 「➊ 유교 문화가…」 → {n:1, t:'유교 문화가…'}
+  QP.parseNumbered = function (s) {
+    s = String(s || '').trim();
+    if (!s) return null;
+    const c = CIRCLED.indexOf(s[0]) >= 0 ? CIRCLED.indexOf(s[0]) : CIRCLED2.indexOf(s[0]);
+    if (c >= 0) return { n: c + 1, t: s.slice(1).trim() };
+    const m = s.match(/^(\d+)\s*(?:단원|\.|\)|:)?\s*(.*)$/);
+    if (m) return { n: +m[1], t: m[2].trim() };
+    return { n: null, t: s };
+  };
   function readIndex(rows) {
     const info = {};
+    const head = (rows[0] || []).map(cell);
+    const at = (names) => head.findIndex((h) => names.some((n) => h.startsWith(n)));
+    const C = { name: at(['시트']), subject: at(['과목']), grade: at(['학년']), unit: at(['단원']), topic: at(['주제']), lessons: at(['차시']), tb: at(['교과서']), source: at(['출처']) };
+    if (C.name < 0) C.name = 0;
     for (const row of rows.slice(1)) {
-      const name = cell(row[0]);
+      const get = (k) => (C[k] >= 0 ? cell(row[C[k]]) : '');
+      const name = get('name');
       if (!name) continue;
-      const g = cell(row[2]);
-      info[name] = { subject: cell(row[1]), grade: /^\d+$/.test(g) ? +g : null, source: cell(row[3]) };
+      const g = get('grade');
+      const o = { subject: get('subject'), grade: /^\d+$/.test(g) ? +g : null, source: get('source') || (C.source < 0 && head.length <= 4 ? cell(row[3]) : '') };
+      const u = QP.parseNumbered(get('unit')),
+        t = QP.parseNumbered(get('topic'));
+      if (u && u.n) Object.assign(o, { unit: u.n, unitTitle: u.t });
+      if (t && t.n) Object.assign(o, { topic: t.n, topicTitle: t.t });
+      if (get('lessons')) o.lessons = get('lessons').replace(/\s*차시$/, '');
+      if (get('tb')) o.tb = get('tb').replace(/\s*쪽$/, '');
+      info[name] = o;
     }
     return info;
   }
@@ -267,6 +292,9 @@
         questions: qs,
       };
       if (example) pack.test = true;
+      // 범위 칸(단원·주제·차시·교과서 쪽): 선생님 화면이 단원 → 주제 → 차시로 묶어 보여 준다
+      for (const k of ['unit', 'unitTitle', 'topic', 'topicTitle', 'lessons', 'tb']) if (meta[k] !== undefined && meta[k] !== '') pack[k] = meta[k];
+      if (pack.unit) pack.name = title.replace(/^\d+\s*단원\s*/, '').replace(new RegExp('^[' + CIRCLED + CIRCLED2 + ']\\s*'), '');
       // 게임의 묶음 검사도 한 번 더(문제 글 길이 등)
       const chk = QP.checkPack(pack);
       for (const e of chk.errors) if (!errors.includes(e)) errors.push('「' + title + '」 ' + e.replace(/^(\d+)번: /, '$1번째 문제: '));

@@ -64,4 +64,7 @@
 
   // 순위 매기기: 금 많은 순, 같으면 먼저 그 금에 닿은 순서 대신 별명 순(흔들리지 않게)
   QP.rankSeats = (seats) => seats.slice().sort((a, b) => b.gold - a.gold || (a.nick < b.nick ? -1 : 1));
+  // 등수: 금이 같으면 같은 등수(공동), 금이 0이면 등수 없음(0) — 아무도 답을 안 낸 처음에 0점끼리 등수가 붙지 않게
+  QP.rankOfGold = (gold, all) => (gold > 0 ? 1 + all.filter((g) => g > gold).length : 0);
+  QP.PODIUM = 5;
 })(typeof window !== 'undefined' ? window : globalThis);

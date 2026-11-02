@@ -204,7 +204,7 @@
       if (!v) return '<div class="center"><div class="spin"></div></div>';
       if (ph === 'end') {
         return (
-          '<div class="center endcard"><img class="bigdoll" src="' + myPortrait() + '" alt=""><h1 class="t">' + v.rank + '등!</h1><p class="sum"><span class="coin"></span> ' + fmt(v.gold) + ' · 맞힌 문제 ' + v.nOk + '개</p><p>' + (v.rank <= 3 ? '와, 시상대에 올랐어요! TV를 봐요.' : '수고했어요! TV에서 시상대를 봐요.') + '</p></div>'
+          '<div class="center endcard"><img class="bigdoll" src="' + myPortrait() + '" alt=""><h1 class="t">' + (v.rank ? v.rank + '등!' : '끝!') + '</h1><p class="sum"><span class="coin"></span> ' + fmt(v.gold) + ' · 맞힌 문제 ' + v.nOk + '개</p><p>' + (v.rank && v.rank <= 3 ? '와, 시상대에 올랐어요! TV를 봐요.' : v.rank ? '수고했어요! TV에서 시상대를 봐요.' : '다음 판에는 금을 모아 봐요!') + '</p></div>'
         );
       }
       const mv = (C.game.board || []).find((b) => b.sid === s.sid);
@@ -212,7 +212,7 @@
       const notes = (v.notes || []).map(noteText).filter(Boolean);
       return (
         '<div class="center revcard"><p class="lbl">이번 라운드</p><div class="delta ' + (v.delta >= 0 ? 'plus' : 'minus') + '">' + (v.delta >= 0 ? '+' : '') + fmt(v.delta) + '</div>' +
-        '<div class="rk">' + v.rank + '등 <small>/ ' + v.n + '명</small> ' + arrow + '</div>' +
+        (v.rank ? '<div class="rk">' + v.rank + '등 <small>/ ' + v.n + '명</small> ' + arrow + '</div>' : '<div class="rk none">아직 등수가 없어요 <small>금을 모으면 등수가 생겨요</small></div>') +
         (notes.length ? '<ul class="notes">' + notes.map((n) => '<li>' + n + '</li>').join('') + '</ul>' : '') +
         '<p class="tvnote">TV에서 순위를 봐요!</p></div>'
       );

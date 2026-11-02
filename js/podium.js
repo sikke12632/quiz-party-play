@@ -152,7 +152,7 @@
           const sl = slotOf(r);
           p.o.position.set(sl.x, sl.y + 0.02, 1.2);
           p.el.className = 'podplate r' + (r + 1) + (on && kid ? '' : ' hide');
-          if (kid) p.el.innerHTML = '<em>' + (r + 1) + '등</em><b>' + kid.nick + '</b><span><i class="coin"></i>' + kid.gold.toLocaleString() + '</span>';
+          if (kid) p.el.innerHTML = '<em>' + (kid.rank || r + 1) + '등</em><b>' + kid.nick + '</b><span><i class="coin"></i>' + kid.gold.toLocaleString() + '</span>';
         }
       }
       // 움직임 하나: from(지금 자리) → to, arc 높이, spin 구르기, at(k) 중간 일, done 끝 일

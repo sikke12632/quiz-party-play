@@ -44,36 +44,167 @@
     INDEX = await fetch('questions/index.json', { cache: 'no-cache' }).then((r) => r.json());
     return INDEX;
   }
-  async function scSetup() {
-    screen = 'setup';
+  /* ===== 출제 범위 고르기 (작업/결정-문제넣기-구현.md 「추가 요청」) =====
+   * 과목 → 단원 → 주제 → 차시 순서로 보이고, 「단원 전체」「주제 전체」로 한꺼번에 고른다.
+   * 범위 칸(unit·topic·lessons·tb)이 없는 묶음은 과목 아래 「그 밖의 묶음」. 시험용·계산 자동은 따로.
+   * 아래 막대에 고른 범위와 문제 수 합계가 늘 보인다. 「객관식만 내기」는 고를 수 있게 두되 기본은 끔(담임: OX·숫자 답도 괜찮다).
+   */
+  const SUBJ_ORDER = ['국어', '수학', '사회', '과학', '영어', '도덕', '음악', '미술', '체육', '실과', '기타', '시험용', '계산'];
+  const CIRC = '➊➋➌➍➎➏➐➑➒➓';
+  let ITEMS = [],
+    SEL = new Set(),
+    ONLY = true,
+    MINE_OK = null;
+  const staticCache = {};
+  const loadStatic = async (e) => staticCache[e.id] || (staticCache[e.id] = await fetch('questions/' + e.file, { cache: 'no-cache' }).then((r) => r.json()));
+  const nChoice = (qs) => qs.filter((q) => (q.type || 'choice') === 'choice').length;
+  const cnt = (it) => (ONLY ? it.nChoice : it.count);
+  async function buildItems() {
     const idx = await loadIndex();
-    const pf = Object.assign({ packs: [idx.packs[0] && idx.packs[0].id], gen: [], mine: [], minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true }, prefs.get() || {});
-    pf.mine = pf.mine || [];
+    const out = [];
+    const st = await Promise.all(idx.packs.map((e) => loadStatic(e).catch(() => null)));
+    idx.packs.forEach((e, i) => {
+      const p = st[i];
+      if (!p) return;
+      out.push(Object.assign({ key: 'pk:' + e.id, src: 'static', id: e.id, file: e.file, title: e.title, subject: e.test || p.test ? '시험용' : e.subject || p.subject || '기타', count: p.questions.length, nChoice: nChoice(p.questions), test: !!(e.test || p.test), order: i }, pick(Object.assign({}, p, e))));
+    });
     const MP = myPacks();
     const mine = await MP.list();
-    const subj = {};
-    for (const p of idx.packs) (subj[p.subject || '기타'] = subj[p.subject || '기타'] || []).push(p);
+    MINE_OK = MP.serverOk;
+    mine.forEach((m, i) => out.push(Object.assign({ key: 'mk:' + m.id, src: 'mine', id: m.id, title: m.title, subject: m.test ? '시험용' : m.subject || '기타', count: m.count, nChoice: m.nChoice === undefined ? m.count : m.nChoice, test: m.test, where: m.where, order: 1000 + i }, pick(m))));
+    (idx.gen || []).forEach((g, i) => out.push({ key: 'gn:' + g, src: 'gen', id: g, title: QP.GEN[g].title, subject: '계산', count: 40, nChoice: 40, order: 2000 + i }));
+    return out;
+  }
+  function pick(p) {
+    const o = {};
+    for (const k of ['unit', 'unitTitle', 'topic', 'topicTitle', 'lessons', 'name', 'tb']) if (p[k] !== undefined && p[k] !== null && p[k] !== '') o[k] = p[k];
+    return o;
+  }
+  const subjRank = (x) => (SUBJ_ORDER.indexOf(x) < 0 ? 50 : SUBJ_ORDER.indexOf(x));
+  const tLabel = (n) => (n >= 1 && n <= 10 ? CIRC[n - 1] : n + '.');
+  // 차시 "1~3", "4", "5~6" → 합쳐서 "1~6"(이어지면), 아니면 "1~3, 8"
+  function lessonSpan(list) {
+    const nums = new Set();
+    for (const l of list) {
+      const m = String(l).match(/(\d+)\s*(?:~\s*(\d+))?/);
+      if (!m) continue;
+      for (let k = +m[1]; k <= +(m[2] || m[1]); k++) nums.add(k);
+    }
+    const a = [...nums].sort((x, y) => x - y);
+    const seg = [];
+    for (const n of a) {
+      const last = seg[seg.length - 1];
+      if (last && n === last[1] + 1) last[1] = n;
+      else seg.push([n, n]);
+    }
+    return seg.map(([x, y]) => (x === y ? x : x + '~' + y)).join(', ');
+  }
+  // 고른 범위 한 줄: "사회 2단원 ➊ 1~7차시, ➋ 10차시 · 곱셈구구"
+  function rangeLabel(items) {
+    const parts = [];
+    const bySub = {};
+    for (const it of items) (bySub[it.subject] = bySub[it.subject] || []).push(it);
+    for (const sub of Object.keys(bySub).sort((x, y) => subjRank(x) - subjRank(y))) {
+      const its = bySub[sub];
+      const scoped = its.filter((i) => i.unit);
+      const units = [...new Set(scoped.map((i) => i.unit))].sort((x, y) => x - y);
+      const uParts = units.map((u) => {
+        const all = ITEMS.filter((i) => i.subject === sub && i.unit === u);
+        const mine = scoped.filter((i) => i.unit === u);
+        if (all.length > 1 && mine.length === all.length) return u + '단원 전체';
+        const topics = [...new Set(mine.map((i) => i.topic || 0))].sort((x, y) => x - y);
+        return u + '단원 ' + topics.map((t) => (t ? tLabel(t) + ' ' : '') + lessonSpan(mine.filter((i) => (i.topic || 0) === t).map((i) => i.lessons || '')) + '차시').join(', ');
+      });
+      const rest = its.filter((i) => !i.unit).map((i) => i.title);
+      const txt = uParts.concat(rest.length > 3 ? [rest.slice(0, 3).join(', ') + ' 외 ' + (rest.length - 3) + '개'] : rest).join(', ');
+      parts.push(sub === '시험용' || sub === '계산' || sub === '기타' ? txt : sub + ' ' + txt);
+    }
+    return parts.join(' · ');
+  }
+  function row(it) {
+    const on = SEL.has(it.key);
+    const label =
+      '<label class="prow"><input type="checkbox" data-key="' + esc(it.key) + '"' + (on ? ' checked' : '') + '><span class="pn' + (it.src === 'mine' ? ' mt' : '') + '">' + esc(it.unit && it.name ? it.name : it.title) + '</span>' +
+      (it.tb ? '<span class="tb">교과서 ' + esc(it.tb) + '쪽</span>' : '') +
+      '<span class="pc">' + cnt(it) + '문제</span>' +
+      (it.src === 'mine' ? '<i class="mine">내가 넣음</i>' : '') +
+      (it.where === 'local' ? '<i class="loc" title="서버에 아직 못 올렸어요">이 컴퓨터만</i>' : '') +
+      '</label>';
+    if (it.src !== 'mine') return '<div class="prw">' + label + '</div>';
+    return '<div class="prw mk" data-id="' + esc(it.id) + '">' + label + '<button class="mini" data-mren="' + esc(it.id) + '">이름</button><button class="mini" data-mdel="' + esc(it.id) + '">지우기</button></div>';
+  }
+  const gsum = (its) => '<span class="gc">' + its.reduce((a, i) => a + cnt(i), 0) + '문제</span>';
+  function treeHTML() {
+    const subs = [...new Set(ITEMS.map((i) => i.subject))].sort((x, y) => subjRank(x) - subjRank(y));
+    return subs
+      .map((sub) => {
+        const its = ITEMS.filter((i) => i.subject === sub).sort((a, b) => a.order - b.order);
+        const scoped = its.filter((i) => i.unit);
+        const other = its.filter((i) => !i.unit);
+        let h = '<div class="subj"><h4><label class="tri"><input type="checkbox" data-grp="s|' + esc(sub) + '"> ' + esc(sub === '계산' ? '계산 (자동으로 만듦)' : sub) + '</label>' + gsum(its) + '</h4>';
+        for (const u of [...new Set(scoped.map((i) => i.unit))].sort((x, y) => x - y)) {
+          const ui = scoped.filter((i) => i.unit === u);
+          h += '<details class="unit" open><summary><label class="tri"><input type="checkbox" data-grp="u|' + esc(sub) + '|' + u + '"> <b>' + u + '단원</b> ' + esc(ui[0].unitTitle || '') + '</label><span class="all">단원 전체</span>' + gsum(ui) + '</summary>';
+          for (const t of [...new Set(ui.map((i) => i.topic || 0))].sort((x, y) => x - y)) {
+            const ti = ui.filter((i) => (i.topic || 0) === t);
+            if (t) h += '<div class="topic"><div class="th"><label class="tri"><input type="checkbox" data-grp="t|' + esc(sub) + '|' + u + '|' + t + '"> ' + tLabel(t) + ' ' + esc(ti[0].topicTitle || '') + '</label><span class="all">주제 전체</span>' + gsum(ti) + '</div>';
+            h += ti.map(row).join('');
+            if (t) h += '</div>';
+          }
+          h += '</details>';
+        }
+        if (other.length) h += (scoped.length ? '<div class="other"><div class="th">그 밖의 묶음</div>' : '<div class="other plain">') + other.map(row).join('') + '</div>';
+        return h + '</div>';
+      })
+      .join('');
+  }
+  function grpItems(g) {
+    const [k, sub, u, t] = g.split('|');
+    return ITEMS.filter((i) => i.subject === sub && (k === 's' || (i.unit === +u && (k === 'u' || (i.topic || 0) === +t))));
+  }
+  function syncSel() {
+    $ui.querySelectorAll('input[data-key]').forEach((x) => (x.checked = SEL.has(x.dataset.key)));
+    $ui.querySelectorAll('input[data-grp]').forEach((x) => {
+      const its = grpItems(x.dataset.grp);
+      const n = its.filter((i) => SEL.has(i.key)).length;
+      x.checked = n > 0 && n === its.length;
+      x.indeterminate = n > 0 && n < its.length;
+    });
+    const items = ITEMS.filter((i) => SEL.has(i.key));
+    const n = items.reduce((a, i) => a + cnt(i), 0);
+    const rng = document.getElementById('rng');
+    if (!rng) return;
+    rng.textContent = items.length ? rangeLabel(items) : '아직 안 골랐어요';
+    document.getElementById('nq').textContent = n;
+    document.getElementById('few').textContent = items.length && n < 20 ? '문제가 적어서 같은 문제가 자주 나와요' : '';
+    const pf = prefs.get() || {};
+    pf.sel = [...SEL];
+    pf.only = ONLY;
+    prefs.set(pf);
+  }
+  async function scSetup() {
+    screen = 'setup';
+    const pf = Object.assign({ minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true }, prefs.get() || {});
+    ITEMS = await buildItems();
+    ONLY = pf.only === true; // 담임: OX·숫자 답도 괜찮다(서술형만 아니면) → 기본은 모두 낸다
+    // 예전에 고른 것(packs·mine·gen) → 새 모양(sel)
+    const sel = pf.sel || [].concat((pf.packs || []).map((x) => 'pk:' + x), (pf.mine || []).map((x) => 'mk:' + x), (pf.gen || []).map((x) => 'gn:' + x));
+    SEL = new Set(sel.filter((k) => ITEMS.some((i) => i.key === k)));
+    if (!pf.sel && !SEL.size && ITEMS[0]) SEL.add(ITEMS.find((i) => i.test) ? ITEMS.find((i) => i.test).key : ITEMS[0].key);
     $ui.innerHTML =
       '<div class="setup"><h1 class="t">우리반 퀴즈 파티</h1>' +
-      '<section><h3>문제 묶음 <small>여러 개 골라 섞을 수 있어요</small></h3>' +
-      '<div class="grp mine"><b>내가 넣은 문제</b>' +
-      (mine.length
-        ? mine.map((p) => '<span class="mk" data-id="' + esc(p.id) + '"><label><input type="checkbox" name="mk" value="' + esc(p.id) + '"' + (pf.mine.includes(p.id) ? ' checked' : '') + '> <span class="mt">' + esc(p.title) + '</span> <i class="cnt">' + p.count + '문제</i>' + (p.test ? ' <i class="tst">시험용</i>' : '') + (p.where === 'local' ? ' <i class="loc" title="서버에 아직 못 올렸어요">이 컴퓨터만</i>' : '') + '</label><button class="mini" data-mren="' + esc(p.id) + '">이름</button><button class="mini" data-mdel="' + esc(p.id) + '">지우기</button></span>').join('')
-        : '<span class="none">아직 없어요. 엑셀 양식에 문제를 채워 넣어 보세요.</span>') +
-      '<span class="imbtns"><button class="mini on" id="imp">문제 넣기 (엑셀)</button><a class="mini" href="questions/template.xlsx" download="퀴즈파티-문제-양식.xlsx">양식 내려받기</a></span>' +
-      (MP.serverOk === false && !QP.isMock ? '<span class="loc wide">서버에 아직 저장할 수 없어서 넣은 문제는 이 컴퓨터에만 있어요. (서버 규칙을 올리면 다른 컴퓨터에서도 보여요)</span>' : '') +
-      '</div>' +
-      Object.keys(subj)
-        .map((k) => '<div class="grp"><b>' + esc(k) + '</b>' + subj[k].map((p) => '<label><input type="checkbox" name="pk" value="' + esc(p.id) + '"' + (pf.packs.includes(p.id) ? ' checked' : '') + '> ' + esc(p.title) + (p.test ? ' <i class="tst">시험용</i>' : '') + '</label>').join('') + '</div>')
-        .join('') +
-      '<div class="grp"><b>계산(자동으로 만듦)</b>' + (idx.gen || []).map((g) => '<label><input type="checkbox" name="gn" value="' + g + '"' + (pf.gen.includes(g) ? ' checked' : '') + '> ' + esc(QP.GEN[g].title) + '</label>').join('') + '</div></section>' +
+      '<section class="scope"><h3>출제 범위 <small>단원 → 주제 → 차시. 「단원 전체」「주제 전체」로 한꺼번에 골라요</small></h3>' +
+      '<div class="scopetools"><label class="chk big"><input type="checkbox" id="onlyc"' + (ONLY ? ' checked' : '') + '> 객관식만 내기 <small>(OX·숫자 답 빼기)</small></label>' +
+      '<span class="imbtns"><button class="mini on" id="imp">문제 넣기 (엑셀)</button><a class="mini" href="questions/template.xlsx" download="퀴즈파티-문제-양식.xlsx">양식 내려받기</a></span></div>' +
+      (MINE_OK === false && !QP.isMock ? '<p class="loc">서버에 아직 저장할 수 없어서 넣은 문제는 이 컴퓨터에만 있어요.</p>' : '') +
+      '<div class="tree">' + treeHTML() + '</div></section>' +
       '<section><h3>놀이</h3><div class="seg"><label class="on"><input type="radio" name="mode" checked> 황금 찾기</label><label class="off">우리반 섬 짓기 <i>곧</i></label></div></section>' +
       '<section><h3>한 판 길이</h3><div class="seg">' + [5, 10, 15].map((m) => '<label' + (pf.minutes === m ? ' class="on"' : '') + '><input type="radio" name="min" value="' + m + '"' + (pf.minutes === m ? ' checked' : '') + '> ' + m + '분</label>').join('') + '</div></section>' +
       '<section class="adv"><h3>시간 <small>해 보고 길거나 짧으면 바꿔요</small></h3>' +
       [['tQ', '문제', 10, 60], ['tChest', '상자', 5, 20], ['tReveal', '발표', 3, 15]].map(([k, n, a, b]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + pf[k] + '">초</label>').join('') +
       '<label class="chk"><input type="checkbox" name="fastOn"' + (pf.fastOn ? ' checked' : '') + '> 빨리 맞힘 보너스</label><label class="chk"><input type="checkbox" name="streakOn"' + (pf.streakOn ? ' checked' : '') + '> 연속 정답 보너스</label></section>' +
-      '<p class="err" id="err"></p><button class="start inline" id="make">판 만들기</button>' +
       (QP.isMock ? '<p class="mocknote">가짜 서버(시험용): 이 브라우저의 다른 탭에서만 들어올 수 있어요</p>' : '<p class="mocknote">' + esc(net.email || '') + '</p>') +
+      '<div class="selbar"><div class="sum"><span class="lb">고른 범위</span> <b id="rng"></b> <span class="sep">·</span> <b id="nq"></b>문제 <span class="few" id="few"></span><p class="err" id="err"></p></div><button class="start inline" id="make">판 만들기</button></div>' +
       '</div>';
     $ui.querySelectorAll('.seg label').forEach((l) =>
       l.addEventListener('click', () => {
@@ -82,6 +213,28 @@
         l.classList.add('on');
       })
     );
+    const tree = $ui.querySelector('.tree');
+    tree.addEventListener('change', (e) => {
+      const x = e.target;
+      if (x.dataset.key) x.checked ? SEL.add(x.dataset.key) : SEL.delete(x.dataset.key);
+      else if (x.dataset.grp) for (const it of grpItems(x.dataset.grp)) x.checked ? SEL.add(it.key) : SEL.delete(it.key);
+      syncSel();
+    });
+    // 「단원 전체」「주제 전체」 글자를 눌러도 켜고 끈다
+    tree.addEventListener('click', (e) => {
+      const a = e.target.closest('.all');
+      if (!a) return;
+      e.preventDefault();
+      const cb = a.parentNode.querySelector('input[data-grp]');
+      cb.checked = !(cb.checked && !cb.indeterminate);
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    document.getElementById('onlyc').onchange = (e) => {
+      ONLY = e.target.checked;
+      tree.innerHTML = treeHTML();
+      syncSel();
+    };
+    syncSel();
     document.getElementById('make').onclick = makeGame;
     document.getElementById('imp').onclick = openImport;
   }
@@ -124,7 +277,7 @@
       new Promise((res, rej) => {
         if (window.XLSX) return res(window.XLSX);
         const sc = document.createElement('script');
-        sc.src = 'lib/xlsx.mini.min.js?v=2';
+        sc.src = 'lib/xlsx.mini.min.js?v=3';
         sc.onload = () => res(window.XLSX);
         sc.onerror = () => rej(new Error('엑셀 읽기 도구를 못 불러왔어요'));
         document.head.appendChild(sc);
@@ -218,42 +371,41 @@
   }
   async function makeGame() {
     const f = (n) => [...$ui.querySelectorAll('input[name="' + n + '"]')];
-    const packIds = f('pk').filter((x) => x.checked).map((x) => x.value);
-    const mineIds = f('mk').filter((x) => x.checked).map((x) => x.value);
-    const gens = f('gn').filter((x) => x.checked).map((x) => x.value);
     const num = (n, d) => Math.max(+f(n)[0].min, Math.min(+f(n)[0].max, +f(n)[0].value || d));
-    const pf = {
-      packs: packIds,
-      mine: mineIds,
-      gen: gens,
+    const items = ITEMS.filter((i) => SEL.has(i.key));
+    const pf = Object.assign(prefs.get() || {}, {
+      sel: [...SEL],
+      only: ONLY,
       minutes: +(f('min').find((x) => x.checked) || { value: 10 }).value,
       tQ: num('tQ', 20),
       tChest: num('tChest', 10),
       tReveal: num('tReveal', 7),
       fastOn: f('fastOn')[0].checked,
       streakOn: f('streakOn')[0].checked,
-    };
+    });
     const err = document.getElementById('err');
-    if (!packIds.length && !gens.length && !mineIds.length) return (err.textContent = '문제 묶음을 하나 이상 골라요');
+    if (!items.length) return (err.textContent = '출제 범위를 하나 이상 골라요');
     prefs.set(pf);
     err.textContent = '문제를 읽는 중…';
-    const packs = [];
-    for (const id of packIds) {
-      const e = INDEX.packs.find((p) => p.id === id);
-      const p = await fetch('questions/' + e.file, { cache: 'no-cache' }).then((r) => r.json());
-      const chk = QP.checkPack(p);
-      if (chk.errors.length) return (err.textContent = p.title + ': ' + chk.errors[0]);
+    let packs = [];
+    for (const it of items) {
+      let p;
+      if (it.src === 'static') {
+        p = await loadStatic({ id: it.id, file: it.file });
+        const chk = QP.checkPack(p);
+        if (chk.errors.length) return (err.textContent = p.title + ': ' + chk.errors[0]);
+      } else if (it.src === 'mine') {
+        p = await myPacks().get(it.id);
+        if (!p) return (err.textContent = '넣은 묶음 「' + it.title + '」을 찾지 못했어요. 목록을 다시 열어 주세요.');
+      } else p = QP.genPack(it.id, Math.floor(Math.random() * 1e9), 40);
       packs.push(p);
     }
-    for (const id of mineIds) {
-      const p = await myPacks().get(id);
-      if (!p) return (err.textContent = '넣은 묶음을 찾지 못했어요. 목록을 다시 열어 주세요.');
-      packs.push(p);
-    }
-    for (const g of gens) packs.push(QP.genPack(g, Math.floor(Math.random() * 1e9), 40));
+    // 객관식만: OX·숫자 답 문제는 뺀다
+    if (ONLY) packs = packs.map((p) => Object.assign({}, p, { questions: p.questions.filter((q) => (q.type || 'choice') === 'choice') })).filter((p) => p.questions.length);
+    if (!packs.length) return (err.textContent = '고른 범위에 객관식 문제가 없어요. 「객관식만 내기」를 끄거나 범위를 바꿔요.');
     err.textContent = '판을 만드는 중…';
     try {
-      ref = await QP.Referee.create(net, { cfg: pf, packs, onUpdate: onRef, log: (m) => console.log('[심판]', m) });
+      ref = await QP.Referee.create(net, { cfg: pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m) });
     } catch (e) {
       console.error(e);
       return (err.textContent = '판을 못 만들었어요: ' + (e.code === 'permission-denied' ? '선생님 계정이 아니에요' : e.message));
@@ -295,7 +447,7 @@
       const url = joinURL().replace(/^https?:\/\//, '').replace(/[a-z]+\.html\?c=\d+.*$/, '');
       $ui.innerHTML =
         '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips"><span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>' +
-        ref.S.packTitles.map((t) => '<span class="chip' + (/시험용/.test(t) ? ' test' : '') + '">' + esc(t) + '</span>').join('') + '</div></div>' +
+        (ref.S.range ? '<span class="chip' + (ref.S.test ? ' test' : '') + '">' + esc(ref.S.range) + '</span>' : ref.S.packTitles.map((t) => '<span class="chip' + (/시험용/.test(t) ? ' test' : '') + '">' + esc(t) + '</span>').join('')) + '</div></div>' +
         '<div class="joinbox"><div class="lab">입장 번호</div><div class="code">' + ref.S.code.split('').map((c) => '<i>' + c + '</i>').join('') + '</div><div class="qr">' + qr.createImgTag(4, 0) + '</div><div class="url">디벗으로 <b>QR</b>을 찍거나<br>주소창에 <b>' + esc(url) + '</b></div></div>' +
         '<div class="count">들어온 친구 <b id="n">0</b> 명</div><button class="start" id="go">시작!</button>';
       document.getElementById('go').onclick = async () => {
@@ -320,20 +472,23 @@
     const sig = S.round + '|' + S.phase + '|' + board.map((b) => b.sid + b.gold).join();
     if ((S.phase === 'reveal' || !lastBoardSig) && sig !== lastBoardSig) {
       lastBoardSig = sig;
-      T.setTop(board.map((b) => ({ sid: b.sid, avatar: b.av, nick: b.nick, gold: b.gold })));
+      T.setTop(podiumKids(board));
       drawRanks(board);
       const nk = document.getElementById('nk');
-      const lead = S.phase === 'reveal' && board[0] && S.round > 1 && (S.prevLead || '') !== board[0].sid;
+      const lead = S.phase === 'reveal' && board[0] && board[0].gold > 0 && S.round > 1 && (S.prevLead || '') !== board[0].sid;
       if (lead) {
         nk.textContent = '새 1등! ' + board[0].nick;
         nk.hidden = false;
         setTimeout(() => (nk.hidden = true), QP.ms(S.cfg.tReveal));
       }
-      if (S.phase === 'reveal' && board[0]) S.prevLead = board[0].sid;
+      if (S.phase === 'reveal' && board[0] && board[0].gold > 0) S.prevLead = board[0].sid;
     }
     tools();
     tick();
   }
+  // 단상: 금이 0보다 많은 아이 중 앞의 5명(같은 금이면 같은 등수)
+  const podiumKids = (board) => board.filter((b) => b.gold > 0).slice(0, QP.PODIUM).map((b) => ({ sid: b.sid, avatar: b.av, nick: b.nick, gold: b.gold, rank: b.rank }));
+  const rankOf = (b, board) => (b.rank !== undefined ? b.rank : QP.rankOfGold(b.gold, board.map((x) => x.gold)));
   function drawRanks(board) {
     const ol = document.getElementById('rl');
     if (!ol) return;
@@ -341,7 +496,8 @@
     ol.innerHTML = board
       .map((b, i) => {
         const mv = b.nw ? '<span class="mv new">NEW</span>' : b.mv > 0 ? '<span class="mv up">▲' + b.mv + '</span>' : b.mv < 0 ? '<span class="mv dn">▼' + -b.mv + '</span>' : '<span class="mv"></span>';
-        return '<li class="' + (i === 0 ? 'k1' : i < 5 ? 'top' : '') + (b.mv ? ' moved' : '') + '"><span class="n">' + (i + 1) + '</span><img src="' + portrait(b.av) + '"><span class="nm">' + esc(b.nick) + '</span><span class="g">' + fmt(b.gold) + '</span>' + mv + '</li>';
+        const rk = rankOf(b, board);
+        return '<li class="' + (rk === 1 ? 'k1' : rk && i < QP.PODIUM ? 'top' : '') + (rk ? '' : ' zero') + (b.mv ? ' moved' : '') + '"><span class="n">' + (rk || '–') + '</span><img src="' + portrait(b.av) + '"><span class="nm">' + esc(b.nick) + '</span><span class="g">' + fmt(b.gold) + '</span>' + mv + '</li>';
       })
       .join('');
   }
@@ -371,9 +527,10 @@
     screen = 'end';
     T.setView('game');
     const board = ref.S.board || ref.makeBoard();
-    T.setTop(board.map((b) => ({ sid: b.sid, avatar: b.av, nick: b.nick, gold: b.gold })));
+    T.setTop(podiumKids(board));
+    const firsts = board.filter((b) => rankOf(b, board) === 1);
     $ui.innerHTML =
-      '<div class="newking big">끝! 1등 ' + esc(board[0] ? board[0].nick : '') + '</div><div class="ranks"><h3>최종 순위</h3><ol id="rl"></ol></div>' +
+      '<div class="newking big">' + (firsts.length ? '끝! ' + (firsts.length > 1 ? '공동 1등 ' : '1등 ') + esc(firsts.map((b) => b.nick).join(', ')) : '끝!') + '</div><div class="ranks"><h3>최종 순위</h3><ol id="rl"></ol></div>' +
       '<div class="endbtns"><button class="go" id="res">결과표 보기</button><button class="ghost" id="new">새 판</button></div>';
     drawRanks(board.map((b) => Object.assign({}, b, { mv: 0, nw: 0 })));
     document.getElementById('res').onclick = () => {
@@ -442,7 +599,7 @@
     const R = ref.results();
     const pct = (x) => Math.round(x * 100) + '%';
     let h =
-      '<div class="results"><h2>결과표 <small>' + R.rounds + '라운드 · ' + esc(R.packs.join(', ')) + '</small><button class="mini" data-csv="1">내려받기(엑셀)</button><button class="mini" data-close="1">닫기</button></h2><div class="rcols">' +
+      '<div class="results"><h2>결과표 <small>' + esc(R.range || R.packs.join(', ')) + ' · ' + R.rounds + '라운드</small><button class="mini" data-csv="1">내려받기(엑셀)</button><button class="mini" data-close="1">닫기</button></h2><div class="rcols">' +
       '<div><h3>문제별 정답률 <small>낮은 것부터</small></h3><table><tr><th>문제</th><th>정답</th><th>맞힘</th><th></th></tr>' +
       R.qs.map((q) => '<tr><td>' + esc(q.q) + '</td><td>' + esc(q.ans) + '</td><td>' + q.ok + '/' + q.n + '</td><td class="bar"><i style="width:' + pct(q.rate) + '" class="' + (q.rate < 0.5 ? 'low' : '') + '"></i><span>' + pct(q.rate) + '</span></td></tr>').join('') +
       '</table></div><div><h3>아이별</h3><table><tr><th>번호</th><th>별명</th><th>등수</th><th>푼 문제</th><th>맞힘</th><th>정답률</th></tr>' +
