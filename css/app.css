@@ -276,3 +276,40 @@ button.mini { font-size: 14px; padding: 4px 12px; border-radius: 999px; border: 
 @keyframes flash { from { background: #fff3c4; transform: translateX(-12px); } }
 .pow { position: absolute; left: 0; top: 0; font-family: 'QPTitle', serif; font-size: 46px; color: #fff3c4; -webkit-text-stroke: 3px #b2391f; text-shadow: 0 4px 0 #7d2820; animation: pow .9s ease-out forwards; pointer-events: none; white-space: nowrap; }
 @keyframes pow { 0% { scale: .2; opacity: 0; } 15% { scale: 1.35; opacity: 1; } 35% { scale: 1; } 80% { opacity: 1; } 100% { scale: 1.1; opacity: 0; } }
+
+/* ================= 선생님 화면: 내가 넣은 문제·문제 넣기 ================= */
+.setup .grp.mine { flex-wrap: wrap; align-items: flex-start; background: #fff8e6; border-radius: 12px; padding: 8px 10px; }
+.setup .mk { display: inline-flex; align-items: center; gap: 4px; background: var(--paper); border: 1.5px solid #e2cb98; border-radius: 999px; padding: 2px 4px 2px 10px; }
+.setup .mk .cnt { font-style: normal; font-size: 13px; color: var(--brown); }
+.setup .mk .loc, .setup .loc { font-style: normal; font-size: 12px; color: #9c2f25; }
+.setup .loc.wide { flex-basis: 100%; }
+.setup .mk input.ren { font: inherit; width: 200px; padding: 1px 6px; border-radius: 6px; border: 2px solid var(--teal); }
+.setup .none { color: var(--brown); font-size: 15px; }
+.setup .imbtns { display: inline-flex; gap: 6px; margin-left: auto; }
+button.mini.on, a.mini.on { background: var(--teal); color: #fff; border-color: var(--teal); }
+button.mini.warn { background: var(--red); color: #fff; border-color: var(--red); }
+a.mini { text-decoration: none; display: inline-block; }
+.imp { position: fixed; inset: 0; background: rgba(42,33,27,.45); z-index: 40; display: grid; place-items: center; }
+.impbox { width: min(980px, calc(100% - 32px)); max-height: calc(100% - 40px); overflow: auto; background: var(--paper); border-radius: 22px; padding: 16px 22px 20px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.impbox h2 { margin: 0 0 10px; font-family: 'QPTitle', serif; font-weight: normal; font-size: 28px; display: flex; gap: 10px; align-items: center; }
+.impbox h2 small { font-family: var(--qfont); font-size: 15px; color: var(--brown); flex: 1; }
+.improw { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.improw label.go.fake { display: inline-block; cursor: pointer; margin: 0; }
+.imphelp { font-size: 15px; color: var(--brown); margin: 8px 0 12px; }
+.ipk { border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; border: 2px solid #cfe9c8; background: #f4fbf2; }
+.ipk.bad { border-color: #f0b9b0; background: #fff4f2; }
+.ipk h3 { margin: 0 0 4px; font-family: 'QPTitle', serif; font-weight: normal; font-size: 21px; }
+.ipk h3 small { font-family: var(--qfont); font-size: 14px; color: var(--brown); }
+.ipk ul { margin: 4px 0; padding-left: 20px; font-size: 15px; }
+.ipk .errs li { color: #9c2f25; }
+.ipk .warns li { color: #6b5440; }
+.ipk details summary { cursor: pointer; font-size: 14px; color: var(--brown); }
+.ipk .pv { list-style: none; padding: 0; }
+.ipk .pv li { background: #fff; border-radius: 10px; padding: 5px 10px; margin-top: 4px; }
+.ipk .pv li span { display: block; font-size: 13px; color: var(--brown); }
+.ipk .pv li.more { background: transparent; color: var(--brown); font-size: 13px; }
+.imp .note { font-size: 15px; color: #8a5a12; margin: 4px 0; }
+.imp .done { font-size: 18px; }
+.impgo { display: flex; justify-content: flex-end; }
+.wrongcard .my { margin-top: 8px; font-size: 20px; color: #9c2f25; }
+.wrongcard .ans.long b { display: block; margin: 8px 0 0; font-size: 32px; padding: 8px 18px; line-height: 1.35; word-break: keep-all; }

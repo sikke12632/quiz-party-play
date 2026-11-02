@@ -59,6 +59,7 @@
   function canRead(path, who, data) {
     if (who.teacher) return true;
     const p = path.split('/');
+    if (p[0] !== 'qp_games') return false; // qp_packs(넣은 문제 묶음) 등은 선생님만
     if (p.length === 2) return true; // 판 문서
     if (p[2] === 'joins') return p[3] === who.uid;
     if (p[2] === 'players') return !data || data.uid === who.uid;
@@ -67,7 +68,7 @@
   function canWrite(path, who, before, after) {
     const p = path.split('/');
     if (who.teacher) return true;
-    if (p.length === 2) return false;
+    if (p[0] !== 'qp_games' || p.length === 2) return false;
     if (p[2] === 'joins') return p[3] === who.uid && after && Object.keys(after).every((k) => ['num', 'tab', 'at', 'ts', 'res', 'rat'].includes(k)) && changedKeys(before, after).every((k) => ['num', 'tab', 'at', 'ts'].includes(k));
     if (p[2] === 'players') return before && before.uid === who.uid && after && after.uid === who.uid && changedKeys(before, after).every((k) => QP.KID_KEYS.includes(k));
     return false;
@@ -184,6 +185,13 @@
       batch: (ops) => send(ops),
       onDoc: (path, cb, onErr) => sub(path, false, cb, onErr),
       onCol: (path, cb, onErr) => sub(path, true, cb, onErr),
+      // 모음 전체(읽을 수 없는 문서가 있으면 Firestore 처럼 통째로 거절)
+      async all(col) {
+        await delay();
+        const list = store.list(col);
+        if (list.some((d) => !canRead(col + '/' + d.id, who, d.data))) throw deny(col);
+        return list;
+      },
       async find(col, field, value) {
         await delay();
         return store.list(col).filter((d) => d.data && d.data[field] === value);

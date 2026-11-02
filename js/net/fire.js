@@ -146,6 +146,14 @@
         return on ? F.disableNetwork(db) : F.enableNetwork(db);
       },
       offline: false,
+      async all(col) {
+        try {
+          const qs = await F.getDocs(F.collection(db, col));
+          return qs.docs.map((d) => ({ id: d.id, data: dec(d.data()) }));
+        } catch (e) {
+          throw wrapErr(e);
+        }
+      },
       async find(col, field, value) {
         const qs = await F.getDocs(F.query(F.collection(db, col), F.where(field, '==', value)));
         return qs.docs.map((d) => ({ id: d.id, data: dec(d.data()) }));

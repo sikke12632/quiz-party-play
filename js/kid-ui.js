@@ -183,8 +183,9 @@
       if (!res.ok)
         return (
           '<div class="wrongcard"><div class="no-badge">' + (res.my === null ? '시간이 다 됐어요' : '아쉬워요') + '</div>' +
-          (res.my !== null ? '<div class="q2">내 답: ' + esc(res.my) + '</div>' : '') +
-          '<div class="ans">정답은 <b>' + esc(res.ans) + '</b></div>' + (res.exp ? '<div class="exp">' + esc(res.exp) + '</div>' : '') +
+          (s.q && s.q.r === r ? '<div class="q2">' + esc(s.q.q) + '</div>' : '') +
+          (res.my !== null ? '<div class="my">내 답: ' + esc(res.my) + '</div>' : '') +
+          '<div class="ans' + (String(res.ans).length > 6 ? ' long' : '') + '">정답은 <b>' + esc(res.ans) + '</b></div>' + (res.exp ? '<div class="exp">' + esc(res.exp) + '</div>' : '') +
           '</div><p class="waitnote">친구들이 상자를 고르고 있어요. 다음 문제에서 맞혀 봐요!</p>'
         );
       const g = res.gain || {};

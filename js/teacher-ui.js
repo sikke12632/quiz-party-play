@@ -47,12 +47,22 @@
   async function scSetup() {
     screen = 'setup';
     const idx = await loadIndex();
-    const pf = Object.assign({ packs: [idx.packs[0] && idx.packs[0].id], gen: [], minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true }, prefs.get() || {});
+    const pf = Object.assign({ packs: [idx.packs[0] && idx.packs[0].id], gen: [], mine: [], minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true }, prefs.get() || {});
+    pf.mine = pf.mine || [];
+    const MP = myPacks();
+    const mine = await MP.list();
     const subj = {};
     for (const p of idx.packs) (subj[p.subject || '기타'] = subj[p.subject || '기타'] || []).push(p);
     $ui.innerHTML =
       '<div class="setup"><h1 class="t">우리반 퀴즈 파티</h1>' +
       '<section><h3>문제 묶음 <small>여러 개 골라 섞을 수 있어요</small></h3>' +
+      '<div class="grp mine"><b>내가 넣은 문제</b>' +
+      (mine.length
+        ? mine.map((p) => '<span class="mk" data-id="' + esc(p.id) + '"><label><input type="checkbox" name="mk" value="' + esc(p.id) + '"' + (pf.mine.includes(p.id) ? ' checked' : '') + '> <span class="mt">' + esc(p.title) + '</span> <i class="cnt">' + p.count + '문제</i>' + (p.test ? ' <i class="tst">시험용</i>' : '') + (p.where === 'local' ? ' <i class="loc" title="서버에 아직 못 올렸어요">이 컴퓨터만</i>' : '') + '</label><button class="mini" data-mren="' + esc(p.id) + '">이름</button><button class="mini" data-mdel="' + esc(p.id) + '">지우기</button></span>').join('')
+        : '<span class="none">아직 없어요. 엑셀 양식에 문제를 채워 넣어 보세요.</span>') +
+      '<span class="imbtns"><button class="mini on" id="imp">문제 넣기 (엑셀)</button><a class="mini" href="questions/template.xlsx" download="퀴즈파티-문제-양식.xlsx">양식 내려받기</a></span>' +
+      (MP.serverOk === false && !QP.isMock ? '<span class="loc wide">서버에 아직 저장할 수 없어서 넣은 문제는 이 컴퓨터에만 있어요. (서버 규칙을 올리면 다른 컴퓨터에서도 보여요)</span>' : '') +
+      '</div>' +
       Object.keys(subj)
         .map((k) => '<div class="grp"><b>' + esc(k) + '</b>' + subj[k].map((p) => '<label><input type="checkbox" name="pk" value="' + esc(p.id) + '"' + (pf.packs.includes(p.id) ? ' checked' : '') + '> ' + esc(p.title) + (p.test ? ' <i class="tst">시험용</i>' : '') + '</label>').join('') + '</div>')
         .join('') +
@@ -73,14 +83,148 @@
       })
     );
     document.getElementById('make').onclick = makeGame;
+    document.getElementById('imp').onclick = openImport;
+  }
+  let MPK = null;
+  const myPacks = () => MPK || (MPK = new QP.MyPacks(net, QP.kv(QP.isMock ? 'qp-mypacks-mock' : 'qp-mypacks')));
+  // 내가 넣은 문제: 이름 바꾸기·지우기 (확인 창 대신 단추가 바뀐다)
+  $ui.addEventListener('click', async (e) => {
+    const b = e.target.closest('button');
+    if (!b || screen !== 'setup') return;
+    const d = b.dataset;
+    if (d.mren) {
+      const span = b.closest('.mk');
+      const t = span.querySelector('.mt');
+      if (b.classList.contains('save')) {
+        const v = span.querySelector('input.ren').value.trim();
+        if (v) await myPacks().rename(d.mren, v);
+        return scSetup();
+      }
+      t.outerHTML = '<input class="ren" value="' + esc(t.textContent) + '" maxlength="40">';
+      b.textContent = '저장';
+      b.classList.add('save');
+      span.querySelector('input.ren').focus();
+    } else if (d.mdel) {
+      if (!b.classList.contains('warn')) {
+        b.textContent = '정말 지울까요?';
+        b.classList.add('warn');
+        setTimeout(() => b.isConnected && ((b.textContent = '지우기'), b.classList.remove('warn')), 4000);
+        return;
+      }
+      await myPacks().remove(d.mdel);
+      scSetup();
+    }
+  });
+
+  /* ================= 문제 넣기 (엑셀) ================= */
+  let XLSXP = null;
+  function loadXLSX() {
+    return (XLSXP =
+      XLSXP ||
+      new Promise((res, rej) => {
+        if (window.XLSX) return res(window.XLSX);
+        const sc = document.createElement('script');
+        sc.src = 'lib/xlsx.mini.min.js?v=2';
+        sc.onload = () => res(window.XLSX);
+        sc.onerror = () => rej(new Error('엑셀 읽기 도구를 못 불러왔어요'));
+        document.head.appendChild(sc);
+      }));
+  }
+  let impRes = [];
+  function openImport() {
+    const ov = document.createElement('div');
+    ov.className = 'imp';
+    ov.id = 'impov';
+    ov.innerHTML =
+      '<div class="impbox"><h2>문제 넣기 <small>엑셀 파일을 고르면 검사해서 보여 줘요</small><button class="mini" data-x="close">닫기</button></h2>' +
+      '<div class="improw"><label class="go fake">엑셀 파일 고르기<input type="file" id="impf" accept=".xlsx,.xlsm,.xls" multiple hidden></label>' +
+      '<label class="chk"><input type="checkbox" id="impx"> 「예시」 시트도 넣기(시험용)</label>' +
+      '<a class="mini" href="questions/template.xlsx" download="퀴즈파티-문제-양식.xlsx">양식 내려받기</a></div>' +
+      '<p class="imphelp">우리 양식(시트 하나 = 묶음 하나)과 카훗 「가져오기 양식」 엑셀을 읽어요. 여러 파일을 한 번에 골라도 돼요.</p>' +
+      '<div id="impout"></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#impf').onchange = (e) => readFiles([...e.target.files]);
+    ov.querySelector('#impx').onchange = () => impFiles && readFiles(impFiles);
+    ov.addEventListener('click', onImpClick);
+  }
+  let impFiles = null;
+  async function readFiles(files) {
+    impFiles = files;
+    const out = document.getElementById('impout');
+    out.innerHTML = '<p>읽는 중…</p>';
+    let X;
+    try {
+      X = await loadXLSX();
+    } catch (e) {
+      out.innerHTML = '<p class="err">' + esc(e.message) + '</p>';
+      return;
+    }
+    const examples = document.getElementById('impx').checked;
+    const have = new Set((await myPacks().list()).map((p) => p.id));
+    impRes = [];
+    const notes = [];
+    for (const f of files) {
+      try {
+        const wb = X.read(await f.arrayBuffer(), { type: 'array', cellDates: true });
+        const r = QP.importWorkbook(QP.bookFromSheetJS(X, wb), f.name, { examples });
+        notes.push(...r.notes);
+        impRes.push(...r.packs);
+      } catch (e) {
+        notes.push('「' + f.name + '」을(를) 엑셀로 읽지 못했어요. 엑셀(.xlsx) 파일인지 봐 주세요.');
+      }
+    }
+    const ok = impRes.filter((p) => !p.errors.length);
+    out.innerHTML =
+      notes.map((n) => '<p class="note">' + esc(n) + '</p>').join('') +
+      impRes
+        .map((p, i) => {
+          const qs = p.pack.questions;
+          const pv = qs
+            .slice(0, 3)
+            .map((q) => '<li><b>' + esc(q.q) + '</b><span>정답 ' + esc(Array.isArray(q.answer) ? q.answer.join(', ') : q.answer) + (q.wrong ? ' · 오답 ' + esc(q.wrong.join(', ')) : '') + (q.type === 'ox' ? ' · OX' : q.type === 'short' ? ' · 숫자 답' : '') + '</span></li>')
+            .join('');
+          return (
+            '<div class="ipk ' + (p.errors.length ? 'bad' : 'good') + '"><h3>' + (p.errors.length ? '✗ ' : '✓ ') + esc(p.pack.title) + ' <small>' + esc(p.pack.subject) + ' · ' + qs.length + '문제' + (p.kahoot ? ' · 카훗' : '') + (p.pack.test ? ' · 시험용' : '') + (p.warns.length ? ' · 알림 ' + p.warns.length : '') + '</small></h3>' +
+            (have.has(p.pack.id) && !p.errors.length ? '<p class="note">같은 이름의 묶음이 이미 있어요. 넣으면 새것으로 바뀌어요.</p>' : '') +
+            (p.errors.length ? '<p class="note">오류를 고친 뒤 다시 골라 주세요. 이 묶음은 넣지 않아요.</p><ul class="errs">' + p.errors.map((e) => '<li>' + esc(e) + '</li>').join('') + '</ul>' : '') +
+            (p.warns.length ? '<details><summary>알림 ' + p.warns.length + '개 (넣을 수는 있어요)</summary><ul class="warns">' + p.warns.map((e) => '<li>' + esc(e) + '</li>').join('') + '</ul></details>' : '') +
+            (qs.length && !p.errors.length ? '<ul class="pv">' + pv + (qs.length > 3 ? '<li class="more">… ' + (qs.length - 3) + '문제 더</li>' : '') + '</ul>' : '') +
+            '</div>'
+          );
+        })
+        .join('') +
+      (ok.length ? '<div class="impgo"><button class="go" data-x="save">넣기 (' + ok.length + '묶음, ' + ok.reduce((a, p) => a + p.pack.questions.length, 0) + '문제)</button></div>' : '');
+  }
+  async function onImpClick(e) {
+    const b = e.target.closest('[data-x]');
+    if (!b) return;
+    if (b.dataset.x === 'close') {
+      document.getElementById('impov').remove();
+      impRes = [];
+      impFiles = null;
+      return scSetup();
+    }
+    if (b.dataset.x === 'save') {
+      b.disabled = true;
+      const ok = impRes.filter((p) => !p.errors.length);
+      let server = true;
+      for (const p of ok) server = (await myPacks().save(p.pack)) && server;
+      // 넣은 묶음은 바로 골라 둔다
+      const pf = prefs.get() || {};
+      pf.mine = [...new Set([...(pf.mine || []), ...ok.map((p) => p.pack.id)])];
+      prefs.set(pf);
+      document.getElementById('impout').innerHTML = '<p class="done">' + ok.length + '묶음을 넣었어요. ' + (server || QP.isMock ? '「판 만들기」 목록의 「내가 넣은 문제」에서 골라요.' : '서버에 아직 저장할 수 없어서 이 컴퓨터에만 넣었어요. 이 컴퓨터에서는 바로 쓸 수 있어요.') + '</p><div class="impgo"><button class="go" data-x="close">닫고 판 만들러 가기</button></div>';
+    }
   }
   async function makeGame() {
     const f = (n) => [...$ui.querySelectorAll('input[name="' + n + '"]')];
     const packIds = f('pk').filter((x) => x.checked).map((x) => x.value);
+    const mineIds = f('mk').filter((x) => x.checked).map((x) => x.value);
     const gens = f('gn').filter((x) => x.checked).map((x) => x.value);
     const num = (n, d) => Math.max(+f(n)[0].min, Math.min(+f(n)[0].max, +f(n)[0].value || d));
     const pf = {
       packs: packIds,
+      mine: mineIds,
       gen: gens,
       minutes: +(f('min').find((x) => x.checked) || { value: 10 }).value,
       tQ: num('tQ', 20),
@@ -90,7 +234,7 @@
       streakOn: f('streakOn')[0].checked,
     };
     const err = document.getElementById('err');
-    if (!packIds.length && !gens.length) return (err.textContent = '문제 묶음을 하나 이상 골라요');
+    if (!packIds.length && !gens.length && !mineIds.length) return (err.textContent = '문제 묶음을 하나 이상 골라요');
     prefs.set(pf);
     err.textContent = '문제를 읽는 중…';
     const packs = [];
@@ -99,6 +243,11 @@
       const p = await fetch('questions/' + e.file, { cache: 'no-cache' }).then((r) => r.json());
       const chk = QP.checkPack(p);
       if (chk.errors.length) return (err.textContent = p.title + ': ' + chk.errors[0]);
+      packs.push(p);
+    }
+    for (const id of mineIds) {
+      const p = await myPacks().get(id);
+      if (!p) return (err.textContent = '넣은 묶음을 찾지 못했어요. 목록을 다시 열어 주세요.');
       packs.push(p);
     }
     for (const g of gens) packs.push(QP.genPack(g, Math.floor(Math.random() * 1e9), 40));
