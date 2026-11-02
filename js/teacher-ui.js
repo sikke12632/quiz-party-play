@@ -134,8 +134,20 @@
     return '<div class="prw mk" data-id="' + esc(it.id) + '">' + label + '<button class="mini" data-mren="' + esc(it.id) + '">이름</button><button class="mini" data-mdel="' + esc(it.id) + '">지우기</button></div>';
   }
   const gsum = (its) => '<span class="gc">' + its.reduce((a, i) => a + cnt(i), 0) + '문제</span>';
+  // 시험용·계산 자동: 평소엔 안 쓴다(담임) → 맨 아래 「그 밖에」에 작게 접어 두고, 저절로 고르지 않는다
+  const EXTRA = ['시험용', '계산'];
+  const isExtra = (it) => EXTRA.includes(it.subject);
   function treeHTML() {
-    const subs = [...new Set(ITEMS.map((i) => i.subject))].sort((x, y) => subjRank(x) - subjRank(y));
+    const all = [...new Set(ITEMS.map((i) => i.subject))].sort((x, y) => subjRank(x) - subjRank(y));
+    const main = subjHTML(all.filter((x) => !EXTRA.includes(x)));
+    const ex = all.filter((x) => EXTRA.includes(x));
+    const exOn = ITEMS.some((i) => isExtra(i) && SEL.has(i.key));
+    return (
+      (main || '<p class="none">아직 교과 문제 묶음이 없어요. 「문제 넣기 (엑셀)」로 넣어 보세요.</p>') +
+      (ex.length ? '<details class="extra"' + (exOn ? ' open' : '') + '><summary>그 밖에: 시험용·계산 문제 <small>(평소엔 안 써요)</small></summary>' + subjHTML(ex) + '</details>' : '')
+    );
+  }
+  function subjHTML(subs) {
     return subs
       .map((sub) => {
         const its = ITEMS.filter((i) => i.subject === sub).sort((a, b) => a.order - b.order);
@@ -189,8 +201,8 @@
     ONLY = pf.only === true; // 담임: OX·숫자 답도 괜찮다(서술형만 아니면) → 기본은 모두 낸다
     // 예전에 고른 것(packs·mine·gen) → 새 모양(sel)
     const sel = pf.sel || [].concat((pf.packs || []).map((x) => 'pk:' + x), (pf.mine || []).map((x) => 'mk:' + x), (pf.gen || []).map((x) => 'gn:' + x));
-    SEL = new Set(sel.filter((k) => ITEMS.some((i) => i.key === k)));
-    if (!pf.sel && !SEL.size && ITEMS[0]) SEL.add(ITEMS.find((i) => i.test) ? ITEMS.find((i) => i.test).key : ITEMS[0].key);
+    // 시험용·계산은 기억해 두지 않는다(필요한 날만 펼쳐서 고른다)
+    SEL = new Set(sel.filter((k) => ITEMS.some((i) => i.key === k && !isExtra(i))));
     $ui.innerHTML =
       '<div class="setup"><h1 class="t">우리반 퀴즈 파티</h1>' +
       '<section class="scope"><h3>출제 범위 <small>단원 → 주제 → 차시. 「단원 전체」「주제 전체」로 한꺼번에 골라요</small></h3>' +
@@ -277,7 +289,7 @@
       new Promise((res, rej) => {
         if (window.XLSX) return res(window.XLSX);
         const sc = document.createElement('script');
-        sc.src = 'lib/xlsx.mini.min.js?v=3';
+        sc.src = 'lib/xlsx.mini.min.js?v=4';
         sc.onload = () => res(window.XLSX);
         sc.onerror = () => rej(new Error('엑셀 읽기 도구를 못 불러왔어요'));
         document.head.appendChild(sc);

@@ -355,3 +355,11 @@ a.mini { text-decoration: none; display: inline-block; }
 .selbar button.start.inline { margin: 0; font-size: 26px; padding: 8px 34px; }
 .ranks li.zero .n, .ranks li.zero .g { color: #b5a48a; }
 .revcard .rk.none { font-size: 24px; } .revcard .rk.none small { display: block; font-family: var(--qfont); font-size: 16px; }
+.tree details.extra { margin-top: 6px; font-size: 14px; }
+.tree details.extra > summary { cursor: pointer; color: var(--brown); padding: 4px 8px; list-style: none; }
+.tree details.extra > summary::before { content: '▸ '; }
+.tree details.extra[open] > summary::before { content: '▾ '; }
+.tree details.extra > summary small { font-size: 12px; opacity: .8; }
+.tree details.extra .subj { padding: 2px 10px 4px; background: transparent; border-style: dashed; }
+.tree details.extra h4 { font-size: 16px; }
+.tree details.extra .prow { min-height: 34px; font-size: 15px; }
