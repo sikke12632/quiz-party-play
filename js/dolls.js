@@ -269,9 +269,65 @@
   };
 
   /* 인형 사진 한 장(아이 화면 위쪽의 내 인형). 3D를 계속 돌리지 않고 한 번만 그려 그림으로 쓴다. */
+  // 3D(WebGL)를 쓸 수 있는 컴퓨터인지. 학교 PC는 학교 설정으로 막혀 있기도 하다(2026-11-03 담임: 노트북은 되고 학교 PC는 안 됨)
+  JK.has3D = function () {
+    if (JK._has3D === undefined) {
+      try {
+        const c = document.createElement('canvas');
+        JK._has3D = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+      } catch (e) {
+        JK._has3D = false;
+      }
+    }
+    return JK._has3D;
+  };
+  // 3D 없이 그리는 인형 얼굴(모자 색·옷 색·얼굴)
+  function portrait2D(avatarIdx, s) {
+    const { animal, cloth } = JK.avatarOf(avatarIdx);
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = s;
+    const g = cv.getContext('2d');
+    const ball = (x, y, r, c) => {
+      g.fillStyle = c;
+      g.beginPath();
+      g.arc(x * s, y * s, r * s, 0, Math.PI * 2);
+      g.fill();
+    };
+    g.fillStyle = cloth;
+    g.beginPath();
+    g.ellipse(0.5 * s, 1.02 * s, 0.4 * s, 0.36 * s, 0, 0, Math.PI * 2);
+    g.fill();
+    ball(0.5, 0.44, 0.31, animal.hood);
+    ball(0.5, 0.5, 0.22, '#f1d5ad');
+    ball(0.42, 0.48, 0.028, '#3a2a20');
+    ball(0.58, 0.48, 0.028, '#3a2a20');
+    ball(0.37, 0.56, 0.035, 'rgba(233,146,138,.7)');
+    ball(0.63, 0.56, 0.035, 'rgba(233,146,138,.7)');
+    g.strokeStyle = '#a0503a';
+    g.lineWidth = Math.max(1, s * 0.02);
+    g.beginPath();
+    g.arc(0.5 * s, 0.55 * s, 0.05 * s, 0.2, Math.PI - 0.2);
+    g.stroke();
+    return cv.toDataURL('image/png');
+  }
+  const portraitCache = new Map();
   JK.dollPortrait = function (avatarIdx, size) {
-    const T = THREE;
     size = size || 160;
+    const key = avatarIdx + '|' + size;
+    if (!portraitCache.has(key)) {
+      let url;
+      try {
+        url = JK.has3D() ? portrait3D(avatarIdx, size) : portrait2D(avatarIdx, size);
+      } catch (e) {
+        JK._has3D = false;
+        url = portrait2D(avatarIdx, size);
+      }
+      portraitCache.set(key, url);
+    }
+    return portraitCache.get(key);
+  };
+  function portrait3D(avatarIdx, size) {
+    const T = THREE;
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
     const r = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -292,5 +348,5 @@
     r.dispose();
     r.forceContextLoss && r.forceContextLoss();
     return url;
-  };
+  }
 })();

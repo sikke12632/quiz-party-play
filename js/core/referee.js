@@ -32,7 +32,9 @@
     }
 
     /* ================= 판 만들기 / 이어 하기 ================= */
-    static async create(net, { cfg, packs, seed, tab, onUpdate, log, label }) {
+    static async create(net, { cfg, packs, seed, tab, onUpdate, log, label, step }) {
+      step = step || (() => {});
+      step('옛 판 찾기');
       const all = await net.find('qp_games', 'owner', net.uid);
       let code;
       for (let k = 0; k < 50; k++) {
@@ -41,6 +43,7 @@
         if (!same.some((d) => d.data.phase !== 'end')) break;
       }
       // 이 선생님의 끝나지 않은 옛 판은 닫는다
+      step('옛 판 닫기');
       for (const d of all) if (d.data.phase !== 'end') await net.update(G + d.id, { phase: 'end', closed: true });
       const gid = QP.id(10);
       const ref = new Referee(net, gid, { tab, onUpdate, log });
@@ -66,8 +69,11 @@
         createdAt: net.now(),
       };
       ref.r = QP.rng(seed);
+      step('서버에 판 쓰기');
       await net.set(G + gid, { code, owner: net.uid, refTab: ref.tab, phase: 'lobby', round: 0, endsAt: 0, cfg: ref.pubCfg(), board: [], ev: null, test: ref.S.test, packs: ref.S.packTitles, range: ref.S.range, at: net.now() });
+      step('판 저장하기');
       await ref.save();
+      step('연결하기');
       ref.listen();
       return ref;
     }

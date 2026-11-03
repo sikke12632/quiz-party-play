@@ -163,7 +163,15 @@
 
   const S = (JK.TV = {});
   S.init = function (canvas, labelLayer) {
-    const renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
+    let renderer;
+    try {
+      renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
+    } catch (e) {
+      // 타임머신과 같은 설정으로 한 번 더(가장자리 다듬기 끔)
+      console.warn('3D 다시 켜 보기', e);
+      S.retry = String((e && e.message) || e);
+      renderer = new T.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
+    }
     renderer.outputColorSpace = T.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;

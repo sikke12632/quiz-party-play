@@ -25,12 +25,54 @@
 
   function tv() {
     if (!tvReady) {
-      JK.TV.init(document.getElementById('cv'), document.getElementById('labels'));
       tvReady = true;
+      try {
+        if (!JK.has3D()) throw new Error('WebGL 없음');
+        JK.TV.init(document.getElementById('cv'), document.getElementById('labels'));
+      } catch (e) {
+        // 학교 PC처럼 3D가 막힌 컴퓨터: 그림 없이 진행한다(3D 부르는 곳은 모두 아무것도 안 함)
+        console.warn('3D 없이 해요', e);
+        showErr('3D를 못 켰어요(그림 없이 해요). 이 화면을 사진으로 보내 주세요', String((e && e.message) || e) + ' / ' + glInfo());
+        document.body.classList.add('no3d');
+        JK.TV = new Proxy({}, { get: () => () => {} });
+        setTimeout(() => toast('이 컴퓨터는 3D 그림이 막혀 있어서 그림 없이 해요'), 500);
+      }
     }
     return JK.TV;
   }
   const portrait = (av) => portraits[av] || (portraits[av] = JK.dollPortrait(av, 48));
+  // 이 컴퓨터의 3D 사정(진단용): webgl2/webgl 되는지, 그래픽 장치 이름
+  function glInfo() {
+    const out = [];
+    for (const k of ['webgl2', 'webgl']) {
+      try {
+        const g = document.createElement('canvas').getContext(k);
+        if (!g) {
+          out.push(k + ' 안 됨');
+          continue;
+        }
+        const d = g.getExtension('WEBGL_debug_renderer_info');
+        out.push(k + ' 됨' + (d ? ' (' + g.getParameter(d.UNMASKED_RENDERER_WEBGL) + ')' : ''));
+        const lose = g.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+      } catch (e) {
+        out.push(k + ' 오류 ' + e.message);
+      }
+    }
+    return out.join(', ');
+  }
+  // 오류를 화면에 보여 준다(선생님이 사진으로 보내 줄 수 있게)
+  function showErr(what, e) {
+    let box = document.getElementById('errbox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'errbox';
+      document.body.appendChild(box);
+    }
+    box.textContent = what + ': ' + ((e && (e.message || e.reason || e)) || '') + ' · ' + navigator.userAgent.replace(/^Mozilla\/5\.0 /, '').slice(0, 120);
+  }
+  window.addEventListener('error', (ev) => showErr('오류', ev.error || ev.message));
+  window.addEventListener('unhandledrejection', (ev) => showErr('오류', ev.reason));
   function toast(msg) {
     $toast.textContent = msg;
     $toast.className = 'show';
@@ -416,16 +458,35 @@
     if (ONLY) packs = packs.map((p) => Object.assign({}, p, { questions: p.questions.filter((q) => (q.type || 'choice') === 'choice') })).filter((p) => p.questions.length);
     if (!packs.length) return (err.textContent = '고른 범위에 객관식 문제가 없어요. 「객관식만 내기」를 끄거나 범위를 바꿔요.');
     err.textContent = '판을 만드는 중…';
+    // 한 단계가 오래 걸리면 어디서 기다리는지 보여 준다(학교 PC에서 멈춤, 2026-11-03)
+    let stepName = '시작',
+      stepAt = Date.now();
+    const watch = setInterval(() => {
+      if (Date.now() - stepAt > 12000) err.textContent = '판을 만드는 중… (' + stepName + ' — 서버 답을 ' + Math.round((Date.now() - stepAt) / 1000) + '초째 기다려요. 인터넷 연결을 확인해 주세요)';
+    }, 1000);
     try {
-      ref = await QP.Referee.create(net, { cfg: pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m) });
+      ref = await QP.Referee.create(net, { cfg: pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
+          stepName = s;
+          stepAt = Date.now();
+          err.textContent = '판을 만드는 중… (' + s + ')';
+        } });
     } catch (e) {
       console.error(e);
-      return (err.textContent = '판을 못 만들었어요: ' + (e.code === 'permission-denied' ? '선생님 계정이 아니에요' : e.message));
+      clearInterval(watch);
+      return (err.textContent = '판을 못 만들었어요 (' + stepName + '): ' + (e.code === 'permission-denied' ? '선생님 계정이 아니에요' : e.message));
     }
     saved.set({ gid: ref.gid });
     window.QPREF = ref;
     if (net.calibrate) net.calibrate('qp_games/' + ref.gid + '/private/clock');
-    onRef(ref);
+    clearInterval(watch);
+    stepName = '화면 그리기';
+    err.textContent = '판을 만드는 중… (화면 그리기)';
+    try {
+      onRef(ref);
+    } catch (e) {
+      console.error(e);
+      showErr('화면을 그리다 멈췄어요', e);
+    }
   }
 
   /* ================= 심판 소식 → 화면 ================= */
@@ -468,6 +529,17 @@
     }
     T.syncKids(kidsOf());
     document.getElementById('n').textContent = Object.keys(ref.S.seats).length;
+    if (document.body.classList.contains('no3d')) {
+      // 3D 섬 대신 들어온 친구 이름표
+      let kl = document.getElementById('kidlist');
+      if (!kl) {
+        kl = document.createElement('div');
+        kl.id = 'kidlist';
+        $ui.appendChild(kl);
+      }
+      const h = kidsOf().map((k) => '<span><img src="' + portrait(k.avatar) + '" alt="">' + esc(k.nick) + '</span>').join('');
+      if (kl.innerHTML !== h) kl.innerHTML = h;
+    }
     tools();
   }
   function scGame() {

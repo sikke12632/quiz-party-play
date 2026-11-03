@@ -363,3 +363,20 @@ a.mini { text-decoration: none; display: inline-block; }
 .tree details.extra .subj { padding: 2px 10px 4px; background: transparent; border-style: dashed; }
 .tree details.extra h4 { font-size: 16px; }
 .tree details.extra .prow { min-height: 34px; font-size: 15px; }
+
+/* 3D(WebGL)가 막힌 컴퓨터·기기: 그림 없이 (학교 PC) */
+body.no3d #cv, body.no3d #chestcv { display: none; }
+body.tv.no3d { background: radial-gradient(ellipse at 40% 70%, #bfe0a0 0%, #9fcf86 35%, #f3e3d3 75%); }
+#kidlist { position: fixed; left: 28px; right: 340px; top: 130px; bottom: 90px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px; overflow: auto; }
+#kidlist span { display: inline-flex; align-items: center; gap: 6px; background: var(--cream); border-radius: 999px; padding: 4px 14px 4px 4px; font-size: 20px; box-shadow: 0 2px 6px rgba(60,40,20,.2); color: #4a3828; }
+#kidlist img { width: 40px; height: 40px; border-radius: 50%; background: #fff7ea; }
+body.no3d .chesthit button { margin: 0 3%; border-radius: 22px 22px 10px 10px; background: linear-gradient(#c4553f 0 36%, #e0ab48 36% 42%, #9c3a28 42%); box-shadow: inset 0 0 0 8px #e0ab48, 0 10px 0 #5e2416; }
+body.no3d .chesthit button:nth-child(2) { background: linear-gradient(#3f7fa8 0 36%, #e0ab48 36% 42%, #2c5d80 42%); }
+body.no3d .chesthit button:nth-child(3) { background: linear-gradient(#7f58b0 0 36%, #e0ab48 36% 42%, #5e3f88 42%); }
+/* 3D 없을 때 TV 순위는 가운데에 크게(단상 대신) */
+body.tv.no3d .ranks:not(.mlog) { right: auto; left: 50%; transform: translateX(-50%); top: 76px; width: min(620px, 90vw); }
+body.tv.no3d .ranks:not(.mlog) li { max-height: 44px; font-size: 21px; }
+body.tv.no3d .ranks:not(.mlog) h3 { font-size: 28px; }
+
+/* 오류 상자(사진 찍어 보내기용) */
+#errbox { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 50; background: #fff0ec; color: #8a2a1c; border: 2px solid #e2475a; border-radius: 12px; padding: 8px 12px; font-size: 14px; word-break: break-all; }

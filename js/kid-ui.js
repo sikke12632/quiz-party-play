@@ -105,7 +105,16 @@
         chestCv.id = 'chestcv';
       }
       $app.prepend(chestCv);
-      if (!chest) chest = JK.ChestScene.init(chestCv);
+      if (!chest) {
+        try {
+          if (!JK.has3D()) throw new Error('WebGL 없음');
+          chest = JK.ChestScene.init(chestCv);
+        } catch (e) {
+          // 3D가 막힌 기기: 상자는 그림 단추로(누르는 곳은 같다)
+          document.body.classList.add('no3d');
+          chest = { setActive() {}, reset() {}, choose() {}, open() {} };
+        }
+      }
       chest.setActive(true);
       const r = C.round;
       if (!prevKey.startsWith('c|' + r + '|')) {
