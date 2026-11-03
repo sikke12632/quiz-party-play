@@ -14,6 +14,9 @@
   QP.ms = (sec) => sec * 1000 * QP.timeScale;
   QP.sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // 연결 상태 시간(초): 숨쉬기 신호 간격, "끊김"으로 보는 조용한 시간
+  // 아이 답은 서버 규칙상 12글자까지(firestore.rules okKid 의 a.v). 긴 보기는 앞 12글자만 보내고 심판이 맞춰 본다(questions.js QP.expandAns)
+  QP.ANS_MAX = 12;
+  QP.ansToSend = (v) => String(v).slice(0, QP.ANS_MAX);
   QP.HEARTBEAT = 10;
   QP.STALE = 25;
 

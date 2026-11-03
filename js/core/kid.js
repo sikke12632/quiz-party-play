@@ -152,8 +152,20 @@
     write(data) {
       if (this.screen === 'otherTab' || this.screen === 'otherDevice') return Promise.resolve();
       this.lastWrite = this.net.now();
-      return this.net.update(G + this.gid + '/players/' + this.num, data).catch((e) => {
-        if (e && e.code === 'permission-denied') this.become('otherDevice');
+      return this.net.update(G + this.gid + '/players/' + this.num, data).catch(async (e) => {
+        if (!e || e.code !== 'permission-denied') return;
+        // 내 자리를 아직 읽을 수 있으면 내 자리다(쓴 값이 규칙에 안 맞았던 것) → 다시 누를 수 있게
+        try {
+          const me = await this.net.get(G + this.gid + '/players/' + this.num);
+          if (me && me.uid === this.net.uid) {
+            if (data.a && this.sent.a === data.a.r) this.sent.a = 0;
+            if (data.c && this.sent.c === data.c.r) this.sent.c = 0;
+            if (data.tg && this.sent.tg === data.tg.r) this.sent.tg = 0;
+            console.warn('서버가 받지 않은 값', data);
+            return this.emit();
+          }
+        } catch (e2) {}
+        this.become('otherDevice');
       });
     }
     startBeat() {
@@ -201,7 +213,7 @@
       const q = this.myQ();
       if (!q || this.sent.a === this.round) return false;
       this.sent.a = this.round;
-      this.write({ a: { r: this.round, v: String(v) } });
+      this.write({ a: { r: this.round, v: QP.ansToSend(v) } }); // 긴 보기는 앞 12글자만(서버 규칙)
       this.emit();
       return true;
     }

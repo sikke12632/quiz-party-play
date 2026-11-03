@@ -70,7 +70,7 @@
     if (who.teacher) return true;
     if (p[0] !== 'qp_games' || p.length === 2) return false;
     if (p[2] === 'joins') return p[3] === who.uid && after && Object.keys(after).every((k) => ['num', 'tab', 'at', 'ts', 'res', 'rat'].includes(k)) && changedKeys(before, after).every((k) => ['num', 'tab', 'at', 'ts'].includes(k));
-    if (p[2] === 'players') return before && before.uid === who.uid && after && after.uid === who.uid && changedKeys(before, after).every((k) => QP.KID_KEYS.includes(k));
+    if (p[2] === 'players') return before && before.uid === who.uid && after && after.uid === who.uid && changedKeys(before, after).every((k) => QP.KID_KEYS.includes(k)) && (!after.a || String(after.a.v).length <= 12); // 규칙: a.v 는 12글자까지
     return false;
   }
   function changedKeys(a, b) {

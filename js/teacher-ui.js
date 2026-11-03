@@ -480,6 +480,10 @@
     if (net.calibrate) net.calibrate('qp_games/' + ref.gid + '/private/clock');
     clearInterval(watch);
     stepName = '화면 그리기';
+    try {
+      tv().resetTop(); // 전 판 단상 비우기
+    } catch (e) {}
+    screen = '';
     err.textContent = '판을 만드는 중… (화면 그리기)';
     try {
       onRef(ref);
@@ -491,6 +495,8 @@
 
   /* ================= 심판 소식 → 화면 ================= */
   function onRef(r) {
+    // 이어 하기(resume)는 ref 에 넣기 전에 화면을 부른다 → 여기서 넣어 둔다(새로 고침하면 판이 끝나던 까닭, 2026-11-03)
+    ref = r;
     const S = r.S;
     if (r.viewOnly) {
       $ui.innerHTML = '<div class="center card"><h2>다른 탭에서 판을 진행하고 있어요</h2><p>이 탭은 닫아도 돼요.</p></div>';
@@ -600,7 +606,7 @@
     g('pht').textContent = Math.ceil(left);
     g('phb').style.width = Math.min(100, (100 * left) / total) + '%';
     const rest = Math.max(0, S.startedAt + QP.ms(S.cfg.minutes * 60) - net.now()) / QP.ms(1);
-    g('left').textContent = rest > 0 ? '판 끝까지 ' + Math.floor(rest / 60) + ':' + String(Math.floor(rest % 60)).padStart(2, '0') : '마지막 라운드';
+    g('left').textContent = rest > 0 ? '판 끝까지 ' + Math.floor(rest / 60) + ':' + String(Math.floor(rest % 60)).padStart(2, '0') : '마지막 문제!';
     const seats = Object.values(S.seats);
     if (S.phase === 'question') {
       const got = seats.filter((s) => s.cur && s.cur.r === S.round);
@@ -639,7 +645,7 @@
   function tools() {
     if (!ref) return;
     const S = ref.S;
-    let h = '<div class="tbtns"><button class="mini" data-t="att">출석판' + (ref.alerts.length ? ' <i class="dot"></i>' : '') + '</button>' + (S.phase !== 'lobby' && S.phase !== 'end' ? '<button class="mini" data-t="end">판 끝내기</button>' : '') + '</div>';
+    let h = '<div class="tbtns"><button class="mini" data-t="att">출석판' + (ref.alerts.length ? ' <i class="dot"></i>' : '') + '</button>' + (S.phase !== 'lobby' && S.phase !== 'end' ? (S.endAfter || S.endEarly ? '<button class="mini endbtn" disabled>이번 문제 뒤에 끝나요</button>' : '<button class="mini endbtn" data-t="end">이번 문제까지 하고 끝내기</button>') : '') + '</div>';
     for (const a of ref.alerts) h += '<div class="alert">' + a.num + '번 자리에 다른 기기가 들어오려 해요 <button class="mini" data-hand="' + a.num + '" data-uid="' + a.uid + '">넘겨주기</button><button class="mini" data-dis="' + a.num + '" data-uid="' + a.uid + '">무시</button></div>';
     if (showAtt) {
       h += '<div class="att"><h3>출석판 <small>TV에 번호가 보여요. 다 보면 닫아요</small><button class="mini" data-t="att">닫기</button></h3><div class="attgrid">';
@@ -661,9 +667,10 @@
       showAtt = !showAtt;
       tools();
     } else if (d.t === 'end') {
-      if (confirm('이번 라운드 발표 뒤에 판을 끝낼까요?')) {
+      if (confirm('지금 문제까지 하고 판을 끝낼까요?\n(상자·결과 발표·시상까지 다 해요)')) {
         await ref.endNow();
-        toast('이번 라운드 발표 뒤에 끝나요');
+        toast('이번 문제가 마지막이에요. 발표 뒤에 시상해요');
+        tools();
       }
     } else if (d.hand) ref.handOver(+d.hand, d.uid);
     else if (d.dis) ref.dismissAlert(+d.dis, d.uid);
@@ -734,7 +741,14 @@
           return;
         }
       } catch (e) {
+        // 하던 판을 못 불러왔다: 판 설정 화면으로 가지 않는다(가면 새 판이 옛 판을 닫아 아이들 게임이 끝난다)
         console.warn(e);
+        const again = await new Promise((res) => {
+          $ui.innerHTML = '<div class="center card"><h2>하던 판을 다시 불러오지 못했어요</h2><p>' + esc((e && e.message) || String(e)) + '</p><div class="row"><button class="go" id="again">다시 해 보기</button><button class="ghost" id="fresh">새 판 만들기</button></div></div>';
+          document.getElementById('again').onclick = () => res(true);
+          document.getElementById('fresh').onclick = () => res(false);
+        });
+        if (again) return location.reload();
       }
       saved.set(null);
     }

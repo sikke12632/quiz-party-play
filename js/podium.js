@@ -440,7 +440,20 @@
         }
         conf.instanceMatrix.needsUpdate = true;
       }
-      return { group: g, setTop, update };
+      // 새 판: 단상을 비운다(전 판 아이들이 남지 않게, 2026-11-03 담임)
+      function reset() {
+        for (const m of new Set(cast.concat(dolls))) g.remove(m);
+        dolls = [];
+        cast = [];
+        acts = [];
+        actBusy = false;
+        occ = [null, null, null, null, null];
+        kidOf = new Map();
+        settled = true;
+        crownOn = null;
+        showPlates(false);
+      }
+      return { group: g, setTop, update, reset };
     },
   };
 })();

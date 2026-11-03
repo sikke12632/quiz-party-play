@@ -49,6 +49,7 @@
         else {
           const all = [x.answer, ...x.wrong].map((s) => String(s).trim());
           if (new Set(all).size !== all.length) E(i, '보기가 겹쳐요(정답이 오답에 있거나 같은 오답 두 번)');
+          else if (new Set(all.map((s) => s.slice(0, 12).trim())).size !== all.length) E(i, '보기 두 개의 앞 12글자가 같아요(앞부분을 다르게 써 주세요)');
           all.forEach((s) => s.length > LIM.choice && W(i, '보기 "' + s.slice(0, 10) + '…"가 길어요(' + s.length + '자)'));
           if (x.wrong.some((s) => !String(s).trim())) E(i, '빈 오답이 있어요');
         }
@@ -131,10 +132,21 @@
     if (x.type === 'choice') out.ch = r.shuffle([x.answer, ...x.wrong].map(String));
     return out;
   };
+  // 아이 답은 서버 규칙상 12글자까지만 쓸 수 있다(firestore.rules okKid 의 a.v). 긴 보기는 앞 12글자만 보내고 여기서 맞춰 본다.
+  // (QP.ANS_MAX·QP.ansToSend 는 아이 화면도 쓰므로 qp.js 에 있다)
+  const head = (t) => String(t).trim().slice(0, QP.ANS_MAX).trim();
+  // 받은 답(앞 12글자일 수 있음) → 보기 원래 글
+  QP.expandAns = function (x, v) {
+    if (v === undefined || v === null || x.type !== 'choice') return v;
+    const s = String(v).trim();
+    const all = [x.answer, ...(x.wrong || [])].map((t) => String(t).trim());
+    return all.find((t) => t === s) || all.find((t) => t.length > QP.ANS_MAX && head(t) === s) || s;
+  };
   QP.isRight = function (x, v) {
     if (v === undefined || v === null) return false;
     const s = String(v).trim();
     if (x.type === 'short') return (Array.isArray(x.answer) ? x.answer : [x.answer]).some((a) => a.trim() === s);
+    if (x.type === 'choice') return String(QP.expandAns(x, s)).trim() === String(x.answer).trim();
     return String(x.answer).trim() === s;
   };
   QP.answerText = (x) => (Array.isArray(x.answer) ? x.answer[0] : String(x.answer));

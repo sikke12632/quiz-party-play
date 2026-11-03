@@ -353,7 +353,7 @@
           s.streak = 0;
           QP.Deck.retry(s.deck, q.id);
         }
-        const res = { r: S.round, ok, my: s.ans ? s.ans.v : null, ans: QP.answerText(q), exp: q.explain || '', gain, streak: s.streak, gold: s.gold };
+        const res = { r: S.round, ok, my: s.ans ? QP.expandAns(q, s.ans.v) : null, ans: QP.answerText(q), exp: q.explain || '', gain, streak: s.streak, gold: s.gold };
         ops.push({ path: this.path('players/' + s.num), data: { res, gold: s.gold }, merge: true });
       }
       S.board = this.makeBoard();
@@ -525,7 +525,10 @@
     // 선생님이 일찍 끝내기
     async endNow() {
       if (this.S.phase === 'lobby' || this.S.phase === 'end') return this.finish(this.makeBoard(), null);
-      this.S.cfg.minutes = 0; // 이번 라운드 발표 뒤 끝
+      this.S.cfg.minutes = 0; // 이번 라운드 발표 뒤 끝(상자·발표·시상까지 다 한다)
+      this.S.endAfter = true;
+      this.save();
+      this.emit();
     }
 
     /* ================= 선생님 결과표 ================= */

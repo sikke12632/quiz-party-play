@@ -298,6 +298,7 @@
       resize();
     };
     S.setTop = (kids) => pod && pod.setTop(kids);
+    S.resetTop = () => pod && pod.reset();
     let W = 1,
       H = 1;
     function resize() {

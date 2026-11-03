@@ -421,3 +421,9 @@ body.tv.no3d .ranks:not(.mlog) h3 { font-size: 28px; }
 #rules .rnav.rprev { left: 14px; }
 #rules .rnav.rnext { right: 14px; left: auto; bottom: auto; padding: 0; font-family: inherit; color: var(--brown); background: rgba(255,255,255,.7); box-shadow: 0 3px 10px rgba(60,40,20,.15); }
 #rules .rgrid p small { display: block; margin-top: 2px; }
+#errbox { right: auto; max-width: 58vw; bottom: 92px; pointer-events: none; }
+
+/* 판 끝내기: 잘 보이게(2026-11-03 담임) */
+#tools .tbtns { opacity: .9; }
+#tools .tbtns button.endbtn { font-size: 17px; padding: 6px 16px; border: 2px solid var(--red); color: var(--red-d); background: #fff5ee; }
+#tools .tbtns button.endbtn:disabled { border-color: #b39a6a; color: #6b4a2a; background: rgba(251,243,223,.95); }
