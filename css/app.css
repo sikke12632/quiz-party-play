@@ -380,3 +380,44 @@ body.tv.no3d .ranks:not(.mlog) h3 { font-size: 28px; }
 
 /* 오류 상자(사진 찍어 보내기용) */
 #errbox { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 50; background: #fff0ec; color: #8a2a1c; border: 2px solid #e2475a; border-radius: 12px; padding: 8px 12px; font-size: 14px; word-break: break-all; }
+
+/* ---------- 규칙 설명(전자칠판, js/rules-show.js) ---------- */
+.rulesbtn { position: fixed; right: 30px; bottom: 112px; font-size: 22px; padding: 10px 26px; border: 0; border-radius: 999px; background: var(--cream); color: var(--brown); box-shadow: 0 4px 0 #c9b48f, 0 6px 14px rgba(60,40,20,.2); }
+#rules { position: fixed; inset: 0; z-index: 40; background: radial-gradient(ellipse at 30% 20%, #fff8e8, #f2e3c8 70%); color: var(--ink); display: flex; flex-direction: column; }
+#rules .rhead { display: flex; align-items: center; gap: 18px; padding: 16px 28px 0; }
+#rules .rname { font-family: 'QPTitle', serif; font-size: 26px; color: var(--gold-d); }
+#rules .rdots { display: flex; gap: 10px; flex: 1; justify-content: center; }
+#rules .rdots i { width: 16px; height: 16px; border-radius: 50%; background: #dccaa6; cursor: pointer; }
+#rules .rdots i.on { background: var(--red); transform: scale(1.25); }
+#rules .rclose { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--cream); font-size: 26px; color: var(--brown); box-shadow: 0 2px 8px rgba(60,40,20,.2); }
+#rules .rslide { display: none; flex: 1; flex-direction: column; padding: 4px 96px 26px; min-height: 0; }
+#rules .rslide.on { display: flex; animation: rin .35s ease-out; }
+@keyframes rin { from { opacity: 0; transform: translateX(30px); } }
+#rules h2 { font-family: 'QPTitle', serif; font-weight: normal; font-size: clamp(36px, 5.2vw, 72px); margin: 4px 0 2px; }
+#rules h2 em { font-style: normal; color: var(--red); }
+#rules .rsub { margin: 0 0 6px; font-size: clamp(20px, 2.2vw, 30px); color: var(--brown); }
+#rules .rbody { flex: 1; display: flex; gap: 3vw; align-items: center; min-height: 0; }
+#rules .rtext { flex: 1.05; min-width: 0; }
+#rules .rimgs { flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0; max-height: 100%; justify-content: center; }
+#rules .rslide.wide .rbody { flex-direction: row-reverse; }
+#rules .rslide.wide .rimgs { flex: 1.5; }
+#rules figure { margin: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; }
+#rules figure img { max-width: 100%; max-height: 32vh; border-radius: 16px; box-shadow: 0 8px 24px rgba(60,40,20,.25); border: 4px solid #fff; }
+#rules .rimgs.one figure img { max-height: 62vh; }
+#rules figcaption { font-size: clamp(15px, 1.4vw, 20px); color: var(--brown); margin-top: 6px; }
+#rules .ritems { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2.2vh; }
+#rules .ritems li { display: flex; gap: 16px; align-items: center; font-size: clamp(22px, 2.6vw, 38px); line-height: 1.3; }
+#rules .ic { font-size: 1.25em; width: 1.5em; text-align: center; flex: none; }
+#rules small { font-size: .62em; color: var(--brown); }
+#rules b { color: var(--red-d); }
+#rules .tag { display: inline-block; background: var(--gold); color: #5a3a08; border-radius: 999px; padding: 0 .5em; font-size: .8em; margin: 2px 0; white-space: nowrap; }
+#rules .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+#rules .rgrid > div { background: rgba(255,255,255,.75); border-radius: 18px; padding: 12px 16px; box-shadow: 0 3px 10px rgba(60,40,20,.12); display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+#rules .rgrid .ic { grid-row: span 2; font-size: clamp(30px, 3.4vw, 48px); }
+#rules .rgrid b { font-size: clamp(22px, 2.4vw, 34px); }
+#rules .rgrid p { margin: 0; font-size: clamp(16px, 1.6vw, 24px); line-height: 1.3; }
+#rules .rpage { text-align: center; color: var(--brown); font-size: 18px; }
+#rules .rnav { position: fixed; top: 50%; transform: translateY(-50%); width: 64px; height: 110px; border: 0; border-radius: 20px; background: rgba(255,255,255,.7); font-size: 32px; color: var(--brown); box-shadow: 0 3px 10px rgba(60,40,20,.15); }
+#rules .rnav.rprev { left: 14px; }
+#rules .rnav.rnext { right: 14px; left: auto; bottom: auto; padding: 0; font-family: inherit; color: var(--brown); background: rgba(255,255,255,.7); box-shadow: 0 3px 10px rgba(60,40,20,.15); }
+#rules .rgrid p small { display: block; margin-top: 2px; }

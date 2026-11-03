@@ -522,7 +522,10 @@
         '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips"><span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>' +
         (ref.S.range ? '<span class="chip' + (ref.S.test ? ' test' : '') + '">' + esc(ref.S.range) + '</span>' : ref.S.packTitles.map((t) => '<span class="chip' + (/시험용/.test(t) ? ' test' : '') + '">' + esc(t) + '</span>').join('')) + '</div></div>' +
         '<div class="joinbox"><div class="lab">입장 번호</div><div class="code">' + ref.S.code.split('').map((c) => '<i>' + c + '</i>').join('') + '</div><div class="qr">' + qr.createImgTag(4, 0) + '</div><div class="url">디벗으로 <b>QR</b>을 찍거나<br>주소창에 <b>' + esc(url) + '</b></div></div>' +
-        '<div class="count">들어온 친구 <b id="n">0</b> 명</div><button class="start" id="go">시작!</button>';
+        '<div class="count">들어온 친구 <b id="n">0</b> 명</div><button class="start" id="go">시작!</button>' +
+        (QP.showRules ? '<button class="rulesbtn" id="rulesbtn">규칙 설명</button>' : '');
+      const rb = document.getElementById('rulesbtn');
+      if (rb) rb.onclick = () => QP.showRules(ref.S.mode, ref.S.cfg);
       document.getElementById('go').onclick = async () => {
         if (!(await ref.start())) toast('아직 아무도 안 들어왔어요');
       };
