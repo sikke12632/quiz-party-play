@@ -32,6 +32,7 @@
     function act(b) {
       const c = b.c;
       if (c.screen !== 'seat') return;
+      if (c.mafia) return actMafia(b);
       const r = c.round, q = c.myQ();
       if (q && b.busy.a !== r) {
         b.busy.a = r;
@@ -54,6 +55,45 @@
         b.busy.tg = r;
         const t = Math.random() < 0.7 ? o.targets[0] : o.targets[Math.floor(Math.random() * o.targets.length)];
         setTimeout(() => c.pickTarget(t), QP.ms(1 + Math.random() * 3));
+      }
+    }
+    // 도깨비 찾기 봇: 답 → 상자 → 돋보기·지목 → 투표 (마을은 마지막 힌트 무리를 의심, 도깨비는 동료를 감싼다)
+    function actMafia(b) {
+      const c = b.c;
+      if (!c.game.mp || !c.seat) return;
+      const r = c.round;
+      const q = c.myQ();
+      if (q && b.busy.a !== r) {
+        b.busy.a = r;
+        setTimeout(() => {
+          const a = answerOf(q.id);
+          const right = Math.random() < b.acc;
+          c.answer(right ? a : q.ch ? q.ch.find((x) => x !== a) : a === 'O' ? 'X' : '0');
+        }, QP.ms(b.speed * (0.5 + Math.random())));
+      }
+      const role = c.seat.role || {};
+      const mp = c.game.mp;
+      const dolls = (c.game.dolls || []).map((d) => d.sid).filter((sid) => sid !== c.seat.sid && !mp.caught.includes(sid) && !mp.good.includes(sid));
+      const res = c.myRes();
+      // 돋보기(진짜·가짜 모두 같은 단추): 빛이 도는 동안 쓴다
+      if (c.phase === 'result' && res && res.ok && c.mine('magR') && b.busy.mg !== r) {
+        b.busy.mg = r;
+        setTimeout(() => c.magnify(dolls[Math.floor(Math.random() * dolls.length)]), QP.ms(1));
+      }
+      if (c.mine('nomR') && b.busy.tg !== r) {
+        b.busy.tg = r;
+        const hint = (mp.hints.slice(-1)[0] || []).filter((x) => dolls.includes(x));
+        const pool = role.g ? dolls : hint.length ? hint : dolls; // 2판: 도깨비끼리 모른다
+        const pickT = Math.random() < 0.15 ? '' : pool[Math.floor(Math.random() * pool.length)];
+        const tryNom = () => c.nominate(pickT) || (c.phase === 'result' && c.round === r && setTimeout(tryNom, QP.ms(0.3)));
+        setTimeout(tryNom, c.rollLeft() + QP.ms(1.5));
+      }
+      if (c.phase === 'vote' && c.mine('voteR') && b.busy.v !== r) {
+        b.busy.v = r;
+        const tgt = mp.nom && mp.nom.target;
+        const inHint = (mp.hints.slice(-1)[0] || []).includes(tgt);
+        const yes = role.g ? true : Math.random() < (inHint ? 0.75 : 0.4);
+        setTimeout(() => c.vote(yes), QP.ms(1 + Math.random() * 2));
       }
     }
     return bots;

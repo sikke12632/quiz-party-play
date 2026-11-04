@@ -46,11 +46,12 @@
       step('옛 판 닫기');
       for (const d of all) if (d.data.phase !== 'end') await net.update(G + d.id, { phase: 'end', closed: true });
       const gid = QP.id(10);
-      const ref = new Referee(net, gid, { tab, onUpdate, log });
-      cfg = Object.assign({}, QP.DEFAULT_CFG, cfg || {});
+      const ref = new this(net, gid, { tab, onUpdate, log });
+      cfg = Object.assign({}, ref.defaultCfg(), cfg || {});
       seed = seed || Math.floor(Math.random() * 1e9);
       const qs = QP.flatten(packs);
       ref.S = {
+        mode: cfg.mode || 'gold',
         code,
         cfg,
         seed,
@@ -69,30 +70,42 @@
         createdAt: net.now(),
       };
       ref.r = QP.rng(seed);
+      ref.afterCreate();
       step('서버에 판 쓰기');
-      await net.set(G + gid, { code, owner: net.uid, refTab: ref.tab, phase: 'lobby', round: 0, endsAt: 0, cfg: ref.pubCfg(), board: [], ev: null, test: ref.S.test, packs: ref.S.packTitles, range: ref.S.range, at: net.now() });
+      await net.set(G + gid, Object.assign({ mode: ref.S.mode, code, owner: net.uid, refTab: ref.tab, phase: 'lobby', round: 0, endsAt: 0, cfg: ref.pubCfg(), board: [], ev: null, test: ref.S.test, packs: ref.S.packTitles, range: ref.S.range, at: net.now() }, ref.extraDoc()));
       step('판 저장하기');
       await ref.save();
       step('연결하기');
       ref.listen();
       return ref;
     }
+    afterCreate() {}
+    extraDoc() {
+      return {};
+    }
     static async resume(net, gid, opts) {
-      const ref = new Referee(net, gid, opts);
-      const st = await net.get(ref.path('private/state'));
+      const st = await net.get(G + gid + '/private/state');
       if (!st) throw new Error('판을 찾을 수 없어요');
+      const Cls = st.mode === 'mafia' && QP.MafiaReferee ? QP.MafiaReferee : this;
+      const ref = new Cls(net, gid, opts);
       ref.S = st;
       ref.r = QP.rng(st.seed + st.round * 7919 + 1);
       for (const s of Object.values(ref.S.seats)) s.last = 0; // 다시 소식이 올 때까지 끊긴 것으로 본다
       await net.update(ref.path(), { refTab: ref.tab });
       ref.listen();
-      // 하던 단계부터 다시
-      const ph = ref.S.phase;
-      if (ph === 'question') ref.startQuestion(true);
-      else if (ph === 'chest') ref.startChest(true);
-      else if (ph === 'reveal') ref.nextOrEnd();
+      ref.resumePhase();
       ref.emit();
       return ref;
+    }
+    // 하던 단계부터 다시
+    resumePhase() {
+      const ph = this.S.phase;
+      if (ph === 'question') this.startQuestion(true);
+      else if (ph === 'chest') this.startChest(true);
+      else if (ph === 'reveal') this.nextOrEnd();
+    }
+    defaultCfg() {
+      return QP.DEFAULT_CFG;
     }
     pubCfg() {
       const c = this.S.cfg;

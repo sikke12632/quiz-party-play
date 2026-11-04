@@ -99,10 +99,13 @@
 
     function applyOps(ops) {
       // 규칙 검사를 먼저 다 하고(하나라도 안 되면 모두 취소), 그다음 한꺼번에 쓴다
+      // 같은 문서에 여러 번 쓰면 앞의 쓰기 위에 차례로 쌓는다(Firestore 묶음 쓰기와 같게)
+      const staged = new Map();
       const next = ops.map((o) => {
-        const before = store.read(o.path);
+        const before = staged.has(o.path) ? staged.get(o.path) : store.read(o.path);
         const after = o.del ? null : o.merge ? Object.assign({}, before || {}, o.data) : o.data;
         if (!canWrite(o.path, who, before, after)) throw deny(o.path);
+        staged.set(o.path, after);
         return [o.path, after];
       });
       for (const [p, d] of next) store.write(p, d);

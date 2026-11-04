@@ -193,7 +193,12 @@
     get phase() {
       return this.game ? this.game.phase : 'lobby';
     }
+    get mafia() {
+      return !!(this.game && this.game.mode === 'mafia');
+    }
     myQ() {
+      // 도깨비 찾기는 모두 같은 문제(판 문서에 있다)
+      if (this.mafia) return this.game.q && this.game.q.r === this.round && this.phase === 'question' ? this.game.q : null;
       const s = this.seat;
       return s && s.q && s.q.r === this.round && this.phase === 'question' ? s.q : null;
     }
@@ -235,9 +240,54 @@
       this.emit();
       return true;
     }
+    /* ---------- 도깨비 찾기 ---------- */
+    // 이번 라운드에 내게 온 것(자리 문서에서)
+    mine(k) {
+      const x = this.seat && this.seat[k];
+      return x && x.r === this.round ? x : null;
+    }
+    openBox() {
+      const res = this.myRes();
+      if (this.phase !== 'result' || !res || !res.ok || this.sent.c === this.round) return false;
+      this.sent.c = this.round;
+      this.write({ c: { r: this.round, i: 0 } });
+      this.emit();
+      return true;
+    }
+    // 돋보기(진짜·가짜 모두 「돋보기」로 보인다). 결과는 TV 소문으로
+    magnify(sid) {
+      if (this.phase !== 'result' || !this.mine('magR') || this.sent.mg === this.round) return false;
+      this.sent.mg = this.round;
+      this.write({ mg: { r: this.round, sid } });
+      this.emit();
+      return true;
+    }
+    // 지목권 뽑기(TV에서 빛이 도는 중)가 끝날 때까지 남은 ms
+    rollLeft() {
+      const mp = this.game && this.game.mp,
+        n = this.mine('nomR');
+      const at = Math.max((mp && mp.rollEnd) || 0, (n && n.at) || 0); // 지목권 자리 글이 판 글보다 먼저 올 수 있다
+      return Math.max(0, at - this.net.now());
+    }
+    nominate(sid) {
+      if (this.phase !== 'result' || !this.mine('nomR') || this.sent.tg === this.round || this.rollLeft() > 0) return false;
+      this.sent.tg = this.round;
+      this.sent.tgSid = sid || '';
+      this.write({ tg: { r: this.round, sid: sid || '' } });
+      this.emit();
+      return true;
+    }
+    vote(yes) {
+      if (this.phase !== 'vote' || !this.mine('voteR') || this.sent.v === this.round) return false;
+      this.sent.v = this.round;
+      this.sent.vy = yes ? 'Y' : 'N';
+      this.write({ v: { r: this.round, y: yes ? 'Y' : 'N' } });
+      this.emit();
+      return true;
+    }
     // 판 문서의 순위표에서 sid → {nick, av, gold, rank}
     who(sid) {
-      const b = (this.game && this.game.board) || [];
+      const b = (this.game && (this.game.mode === 'mafia' ? this.game.dolls : this.game.board)) || [];
       const i = b.findIndex((x) => x.sid === sid);
       return i < 0 ? null : Object.assign({ rank: i + 1 }, b[i]);
     }

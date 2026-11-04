@@ -246,6 +246,11 @@
 
   // 아바타 번호(0~) → 동물·옷 색. 같은 판 안에서 겹치지 않는다(동물 14 × 옷 2 = 28, 그 뒤는 옷 색을 더 돌린다)
   JK.avatarOf = function (idx) {
+    // 도깨비 찾기 인형(1000~1027): 동물 7 × 색 4
+    if (idx >= 1000 && window.QP && QP.MAFIA_ANIMALS) {
+      const k = idx - 1000;
+      return { animal: ANIMALS[QP.MAFIA_ANIMALS[Math.floor(k / 4)][1]], cloth: QP.MAFIA_COLORS[k % 4][1] };
+    }
     const a = idx % ANIMALS.length;
     const round = Math.floor(idx / ANIMALS.length);
     const cloth = CLOTH[(a * 3 + round * 5) % CLOTH.length];

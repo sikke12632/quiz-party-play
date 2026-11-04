@@ -238,7 +238,8 @@
   }
   async function scSetup() {
     screen = 'setup';
-    const pf = Object.assign({ minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true }, prefs.get() || {});
+    const pf = Object.assign({ minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true, mode: 'gold' }, prefs.get() || {});
+    const mf = Object.assign({}, QP.MAFIA_CFG, pf.mafia || {});
     ITEMS = await buildItems();
     ONLY = pf.only === true; // 담임: OX·숫자 답도 괜찮다(서술형만 아니면) → 기본은 모두 낸다
     // 예전에 고른 것(packs·mine·gen) → 새 모양(sel)
@@ -252,21 +253,34 @@
       '<span class="imbtns"><button class="mini on" id="imp">문제 넣기 (엑셀)</button><a class="mini" href="questions/template.xlsx" download="퀴즈파티-문제-양식.xlsx">양식 내려받기</a></span></div>' +
       (MINE_OK === false && !QP.isMock ? '<p class="loc">서버에 아직 저장할 수 없어서 넣은 문제는 이 컴퓨터에만 있어요.</p>' : '') +
       '<div class="tree">' + treeHTML() + '</div></section>' +
-      '<section><h3>놀이</h3><div class="seg"><label class="on"><input type="radio" name="mode" checked> 황금 찾기</label><label class="off">우리반 섬 짓기 <i>곧</i></label></div></section>' +
-      '<section><h3>한 판 길이</h3><div class="seg">' + [5, 10, 15].map((m) => '<label' + (pf.minutes === m ? ' class="on"' : '') + '><input type="radio" name="min" value="' + m + '"' + (pf.minutes === m ? ' checked' : '') + '> ' + m + '분</label>').join('') + '</div></section>' +
-      '<section class="adv"><h3>시간 <small>해 보고 길거나 짧으면 바꿔요</small></h3>' +
+      '<section><h3>놀이</h3><div class="seg" id="modeseg"><label' + (pf.mode !== 'mafia' ? ' class="on"' : '') + '><input type="radio" name="mode" value="gold"' + (pf.mode !== 'mafia' ? ' checked' : '') + '> 황금 찾기</label><label' + (pf.mode === 'mafia' ? ' class="on"' : '') + '><input type="radio" name="mode" value="mafia"' + (pf.mode === 'mafia' ? ' checked' : '') + '> 도깨비 찾기</label><label class="off">우리반 섬 짓기 <i>곧</i></label></div>' +
+      '<p class="modehelp" data-for="gold">맞히면 상자를 열어 금을 모아요. 순위 경쟁.</p><p class="modehelp" data-for="mafia">모두 같은 문제를 풀고, 맞힌 친구들이 몰래 숨은 도깨비를 찾아요. 말로 하는 건 괜찮고 화면 보여 주기는 안 돼요.</p></section>' +
+      '<section class="mafiaopt" data-for="mafia"><h3>도깨비 찾기 <small>시뮬레이션 권장값(작업/시뮬레이션-마피아.md). 해 보고 바꿔요</small></h3>' +
+      [['mQ', '문제 수', 6, 20, mf.Q], ['mG', '도깨비', 1, 5, mf.G], ['mH', '힌트까지 정답', 30, 150, mf.H], ['mMag', '돋보기 %', 0, 30, Math.round(mf.mag * 100)], ['mFake', '가짜 돋보기 %', 0, 60, Math.round((mf.fake || 0) * 100)], ['mLimit', '잘못 지목 한도', 1, 5, mf.limit]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
+      '<br>' + [['mtQ', '문제', 10, 60, mf.tQ], ['mtR', '지목', 4, 30, mf.tResult], ['mtV', '투표', 5, 30, mf.tVote], ['mtS', '공개', 3, 15, mf.tShow]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '">초</label>').join('') +
+      '</section>' +
+      '<section data-for="gold"><h3>한 판 길이</h3><div class="seg">' + [5, 10, 15].map((m) => '<label' + (pf.minutes === m ? ' class="on"' : '') + '><input type="radio" name="min" value="' + m + '"' + (pf.minutes === m ? ' checked' : '') + '> ' + m + '분</label>').join('') + '</div></section>' +
+      '<section class="adv" data-for="gold"><h3>시간 <small>해 보고 길거나 짧으면 바꿔요</small></h3>' +
       [['tQ', '문제', 10, 60], ['tChest', '상자', 5, 20], ['tReveal', '발표', 3, 15]].map(([k, n, a, b]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + pf[k] + '">초</label>').join('') +
       '<label class="chk"><input type="checkbox" name="fastOn"' + (pf.fastOn ? ' checked' : '') + '> 빨리 맞힘 보너스</label><label class="chk"><input type="checkbox" name="streakOn"' + (pf.streakOn ? ' checked' : '') + '> 연속 정답 보너스</label></section>' +
       (QP.isMock ? '<p class="mocknote">가짜 서버(시험용): 이 브라우저의 다른 탭에서만 들어올 수 있어요</p>' : '<p class="mocknote">' + esc(net.email || '') + '</p>') +
       '<div class="selbar"><div class="sum"><span class="lb">고른 범위</span> <b id="rng"></b> <span class="sep">·</span> <b id="nq"></b>문제 <span class="few" id="few"></span><p class="err" id="err"></p></div><button class="start inline" id="make">판 만들기</button></div>' +
       '</div>';
+    const showMode = () => {
+      const md = ($ui.querySelector('input[name=mode]:checked') || {}).value || 'gold';
+      $ui.querySelectorAll('[data-for]').forEach((x) => (x.hidden = x.dataset.for !== md));
+    };
     $ui.querySelectorAll('.seg label').forEach((l) =>
       l.addEventListener('click', () => {
         if (l.classList.contains('off')) return;
         l.parentNode.querySelectorAll('label').forEach((x) => x.classList.remove('on'));
         l.classList.add('on');
+        const inp = l.querySelector('input');
+        if (inp) inp.checked = true;
+        showMode();
       })
     );
+    showMode();
     const tree = $ui.querySelector('.tree');
     tree.addEventListener('change', (e) => {
       const x = e.target;
@@ -436,7 +450,9 @@
       tReveal: num('tReveal', 7),
       fastOn: f('fastOn')[0].checked,
       streakOn: f('streakOn')[0].checked,
+      mode: (f('mode').find((x) => x.checked) || { value: 'gold' }).value,
     });
+    pf.mafia = { Q: num('mQ', 12), G: num('mG', 3), H: num('mH', 70), mag: num('mMag', 8) / 100, fake: num('mFake', 25) / 100, limit: num('mLimit', 3), tQ: num('mtQ', 20), tResult: num('mtR', 8), tVote: num('mtV', 10), tShow: num('mtS', 6) };
     const err = document.getElementById('err');
     if (!items.length) return (err.textContent = '출제 범위를 하나 이상 골라요');
     prefs.set(pf);
@@ -465,7 +481,9 @@
       if (Date.now() - stepAt > 12000) err.textContent = '판을 만드는 중… (' + stepName + ' — 서버 답을 ' + Math.round((Date.now() - stepAt) / 1000) + '초째 기다려요. 인터넷 연결을 확인해 주세요)';
     }, 1000);
     try {
-      ref = await QP.Referee.create(net, { cfg: pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
+      const mafia = pf.mode === 'mafia';
+      const Cls = mafia ? QP.MafiaReferee : QP.Referee;
+      ref = await Cls.create(net, { cfg: mafia ? Object.assign({ mode: 'mafia' }, pf.mafia) : pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
           stepName = s;
           stepAt = Date.now();
           err.textContent = '판을 만드는 중… (' + s + ')';
@@ -504,6 +522,7 @@
     }
     const ph = S.phase;
     if (ph === 'lobby') return scLobby();
+    if (S.mode === 'mafia') return ph === 'end' ? scMafiaEnd() : scMafia();
     if (ph === 'end') return scEnd();
     return scGame();
   }
@@ -525,15 +544,16 @@
       qr.make();
       const url = joinURL().replace(/^https?:\/\//, '').replace(/[a-z]+\.html\?c=\d+.*$/, '');
       $ui.innerHTML =
-        '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips"><span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>' +
+        '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips">' + (ref.S.mode === 'mafia' ? '<span class="chip mode maf">도깨비 찾기</span><span class="chip">' + ref.S.cfg.Q + '문제</span>' : '<span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>') +
         (ref.S.range ? '<span class="chip' + (ref.S.test ? ' test' : '') + '">' + esc(ref.S.range) + '</span>' : ref.S.packTitles.map((t) => '<span class="chip' + (/시험용/.test(t) ? ' test' : '') + '">' + esc(t) + '</span>').join('')) + '</div></div>' +
         '<div class="joinbox"><div class="lab">입장 번호</div><div class="code">' + ref.S.code.split('').map((c) => '<i>' + c + '</i>').join('') + '</div><div class="qr">' + qr.createImgTag(4, 0) + '</div><div class="url">디벗으로 <b>QR</b>을 찍거나<br>주소창에 <b>' + esc(url) + '</b></div></div>' +
         '<div class="count">들어온 친구 <b id="n">0</b> 명</div><button class="start" id="go">시작!</button>' +
-        (QP.showRules ? '<button class="rulesbtn" id="rulesbtn">규칙 설명</button>' : '');
+        (ref.S.mode !== 'mafia' && QP.showRules ? '<button class="rulesbtn" id="rulesbtn">규칙 설명</button>' : '') +
+        (ref.S.mode === 'mafia' ? '<div class="classrule">말로 하는 건 괜찮아요 · <b>화면 보여 주기는 안 돼요</b> · 내 인형은 말해도, 거짓말해도 돼요</div>' : '');
       const rb = document.getElementById('rulesbtn');
       if (rb) rb.onclick = () => QP.showRules(ref.S.mode, ref.S.cfg);
       document.getElementById('go').onclick = async () => {
-        if (!(await ref.start())) toast('아직 아무도 안 들어왔어요');
+        if (!(await ref.start())) toast(ref.S.mode === 'mafia' ? '도깨비 찾기는 3명 넘게 있어야 해요' : '아직 아무도 안 들어왔어요');
       };
     }
     T.syncKids(kidsOf());
@@ -582,50 +602,105 @@
   // 단상: 금이 0보다 많은 아이 중 앞의 5명(같은 금이면 같은 등수)
   const podiumKids = (board) => board.filter((b) => b.gold > 0).slice(0, QP.PODIUM).map((b) => ({ sid: b.sid, avatar: b.av, nick: b.nick, gold: b.gold, rank: b.rank }));
   const rankOf = (b, board) => (b.rank !== undefined ? b.rank : QP.rankOfGold(b.gold, board.map((x) => x.gold)));
-  function drawRanks(board) {
-    const ol = document.getElementById('rl');
-    if (!ol) return;
-    ol.style.setProperty('--n', Math.max(board.length, 10));
-    ol.innerHTML = board
-      .map((b, i) => {
-        const mv = b.nw ? '<span class="mv new">NEW</span>' : b.mv > 0 ? '<span class="mv up">▲' + b.mv + '</span>' : b.mv < 0 ? '<span class="mv dn">▼' + -b.mv + '</span>' : '<span class="mv"></span>';
-        const rk = rankOf(b, board);
-        return '<li class="' + (rk === 1 ? 'k1' : rk && i < QP.PODIUM ? 'top' : '') + (rk ? '' : ' zero') + (b.mv ? ' moved' : '') + '"><span class="n">' + (rk || '–') + '</span><img src="' + portrait(b.av) + '"><span class="nm">' + esc(b.nick) + '</span><span class="g">' + fmt(b.gold) + '</span>' + mv + '</li>';
-      })
-      .join('');
+  /* ================= 도깨비 찾기 TV ================= */
+  function mafiaStates(g, S) {
+    const mp = g.mp || {};
+    const st = {};
+    const add = (sid, c) => (st[sid] = ((st[sid] || '') + ' ' + c).trim());
+    const lastHint = (mp.hints || []).slice(-1)[0] || [];
+    lastHint.forEach((sid) => add(sid, 'hint'));
+    (mp.caught || []).forEach((sid) => add(sid, 'caught'));
+    (mp.good || []).forEach((sid) => add(sid, 'good'));
+    if (S.phase === 'vote' && mp.nom) {
+      add(mp.nom.target, 'target');
+      add(mp.nom.by, 'by');
+    }
+    if (S.phase === 'show' && mp.last) add(mp.last.target, 'target');
+    return st;
   }
-  function tick() {
-    if (!ref || screen !== 'game') return;
-    const S = ref.S;
-    const left = Math.max(0, S.endsAt - net.now()) / QP.ms(1);
-    const total = S.phase === 'question' ? S.cfg.tQ : S.phase === 'chest' ? S.cfg.tChest : S.cfg.tReveal;
-    const g = (id) => document.getElementById(id);
-    if (!g('rd')) return;
-    g('rd').textContent = S.round + '라운드';
-    g('phn').textContent = { question: '문제 푸는 중', chest: '상자 고르는 중', reveal: '결과 발표' }[S.phase] || '';
-    g('pht').textContent = Math.ceil(left);
-    g('phb').style.width = Math.min(100, (100 * left) / total) + '%';
-    const rest = Math.max(0, S.startedAt + QP.ms(S.cfg.minutes * 60) - net.now()) / QP.ms(1);
-    g('left').textContent = rest > 0 ? '판 끝까지 ' + Math.floor(rest / 60) + ':' + String(Math.floor(rest % 60)).padStart(2, '0') : '마지막 문제!';
-    const seats = Object.values(S.seats);
-    if (S.phase === 'question') {
-      const got = seats.filter((s) => s.cur && s.cur.r === S.round);
-      g('ansn').textContent = '답한 친구 ' + got.filter((s) => s.ans).length + ' / ' + got.length;
-      g('ansn').hidden = false;
-    } else g('ansn').hidden = true;
-  }
-  function scEnd() {
+  let mafiaSig = '',
+    rumorSeen = -1;
+  function scMafia() {
     const T = tv();
-    if (screen === 'end') return tools();
-    screen = 'end';
+    const S = ref.S,
+      m = S.m;
+    if (screen !== 'mafia') {
+      screen = 'mafia';
+      T.setView('lobby');
+      $ui.innerHTML =
+        '<div class="roundbar"><span class="rd" id="rd"></span><span class="ph"><span id="phn"></span> <b id="pht"></b>초 <span class="bar"><i id="phb"></i></span></span><span class="left" id="ansn"></span></div>' +
+        '<div class="newking" id="nk" hidden></div><div class="mpanel" id="mpanel"></div>';
+      mafiaSig = '';
+      rumorSeen = -1;
+    }
+    T.syncKids(kidsOf());
+    const pub = ref.pub();
+    const g = { mp: pub };
+    T.markDolls(mafiaStates(g, S));
+    // 지목권 뽑기(빛 딴딴딴…딴!)·지목당한 친구 가까이·공개 「콩!」 연출
+    T.mafiaStage({ phase: S.phase, round: S.round, cand: m.cand || [], by: m.nominator, nom: m.nom, last: m.last, since: (ref.net.now() - S.phaseAt) / QP.ms(1) });
+    // 새 소문: 그 인형 위에 말풍선(처음 그릴 때·이어 하기 때는 옛 소문을 다시 띄우지 않는다)
+    const rums = m.rumors || [];
+    if (rumorSeen < 0) rumorSeen = rums.length;
+    while (rumorSeen < rums.length) {
+      const x = rums[rumorSeen++];
+      if (T.rumorPop) T.rumorPop(x.sid, x.g);
+    }
+    const rolling = S.phase === 'result' && m.rollEnd ? (ref.net.now() < m.rollEnd - QP.ms(0.75) ? 'R' : 'L') : '';
+    const q = m.cur ? ref.qmap(m.cur.qid) : null;
+    const sig = [S.phase, S.round, pub.gauge, pub.hints.length, pub.caught.length, pub.good.length, pub.wrong, pub.magUsed, (pub.rumors || []).length, JSON.stringify(pub.nom), JSON.stringify(pub.last), S.phase === 'vote' ? m.voters.map((sid) => (ref.bySid(sid) || {}).vote || '').join('') : '', rolling].join('|');
+    if (sig !== mafiaSig) {
+      mafiaSig = sig;
+      const nick = (sid) => esc((ref.bySid(sid) || {}).nick || '?');
+      const j = (sid, a, b) => QP.josa((ref.bySid(sid) || {}).nick, a, b);
+      const showAns = S.phase !== 'question';
+      const ch = q ? (q.type === 'choice' ? [q.answer, ...q.wrong] : q.type === 'ox' ? ['O', 'X'] : []) : [];
+      let h =
+        (q ? '<div class="mq"><p class="qq">' + esc(q.q) + '</p>' + (showAns ? '<p class="qa">정답 <b>' + esc(QP.answerText(q)) + '</b>' + (q.explain ? ' · ' + esc(q.explain) : '') + '</p><p class="qn">맞힌 친구 ' + m.ok.length + '명</p>' : '') + '</div>' : '') +
+        '<div class="gauge"><span>힌트까지</span><span class="bar"><i style="width:' + Math.min(100, (100 * pub.gauge) / pub.H) + '%"></i></span><b>' + pub.gauge + ' / ' + pub.H + '</b></div>' +
+        '<div class="mstat"><span>착해진 도깨비 <b>' + pub.caught.length + ' / ' + S.cfg.G + '</b></span><span>잘못 지목 ' + '●'.repeat(pub.wrong) + '○'.repeat(Math.max(0, pub.limit - pub.wrong)) + '</span></div>' +
+        // 수근수근: 돋보기 소문(누가 봤는지는 안 나옴). "아니래"는 늘 참, "도깨비래"는 가짜 돋보기일 수도
+        ((pub.rumors || []).length
+          ? '<div class="mrum"><b>수근수근</b>' + QP.groupRumors(pub.rumors).map((x) => '<span class="' + (x.g ? 'y' : 'n') + (x.r === S.round ? ' new' : '') + '">' + nick(x.sid) + j(x.sid, '은', '는') + ' ' + (x.g ? '도깨비래' : '아니래') + (x.n > 1 ? ' ×' + x.n : '') + '</span>').join('') + '</div>'
+          : '<div class="mrum none">돋보기 소문이 여기 떠요 · 누가 봤는지는 몰라요</div>') +
+        (pub.hints.length ? '<div class="hints">' + pub.hints.map((hh, i) => '<div class="hint' + (i === pub.hints.length - 1 ? ' last' : '') + '"><b>힌트 ' + (i + 1) + '</b> 이 중에 도깨비가 있어요: ' + hh.map((sid) => '<span>' + nick(sid) + '</span>').join('') + '</div>').join('') + '</div>' : '<div class="hints none">반 전체 정답이 ' + pub.H + '개 모이면 힌트가 나와요</div>');
+      document.getElementById('mpanel').innerHTML = h;
+      const nk = document.getElementById('nk');
+      if (S.phase === 'vote' && pub.nom) {
+        const nv = m.voters.filter((sid) => (ref.bySid(sid) || {}).vote).length;
+        nk.innerHTML = nick(pub.nom.by) + j(pub.nom.by, '이', '가') + ' <b>' + nick(pub.nom.target) + '</b>' + j(pub.nom.target, '을', '를') + ' 지목했어요! <small>맞힌 친구만 투표 ' + nv + ' / ' + m.voters.length + '</small>';
+        nk.hidden = false;
+      } else if (S.phase === 'show' && pub.last) {
+        const l = pub.last;
+        nk.innerHTML = l.pass ? (l.goblin ? nick(l.target) + j(l.target, '은', '는') + ' <b>도깨비</b>였어요! 이제 착한 시민!' : '착한 <b>' + nick(l.target) + '</b>' + j(l.target, '이었어요', '였어요') + '! 풀려났어요') + ' <small>찬성 ' + l.yes + ' · 반대 ' + l.no + '</small>' : '찬성이 절반을 넘지 못했어요 <small>찬성 ' + l.yes + ' / ' + l.n + '명</small>';
+        nk.hidden = false;
+      } else if (S.phase === 'result' && m.nominator && !pub.nom) {
+        nk.innerHTML = rolling === 'R' ? '지목권 뽑기! <small>빨리 맞힌 친구 ' + m.cand.length + '명 중에서 한 명</small>' : '<b>' + nick(m.nominator) + '</b>' + j(m.nominator, '이', '가') + ' 지목권을 받았어요! <small>도깨비 같은 친구를 골라요</small>';
+        nk.hidden = false;
+      } else if (S.phase === 'result' && pub.nom) {
+        nk.innerHTML = '<b>' + nick(pub.nom.by) + '</b>' + j(pub.nom.by, '이', '가') + ' 지목할 친구를 골랐어요! <small>곧 투표해요</small>';
+        nk.hidden = false;
+      } else nk.hidden = true;
+    }
+    tools();
+    tick();
+  }
+  function scMafiaEnd() {
+    const T = tv();
+    const S = ref.S,
+      m = S.m;
+    if (screen === 'mafiaEnd') return tools();
+    screen = 'mafiaEnd';
+    // 단상에서 도깨비 정체 공개
     T.setView('game');
-    const board = ref.S.board || ref.makeBoard();
-    T.setTop(podiumKids(board));
-    const firsts = board.filter((b) => rankOf(b, board) === 1);
+    T.setTop(m.goblins.map((sid) => ref.bySid(sid)).filter(Boolean).map((s) => ({ sid: s.sid, avatar: s.av, nick: s.nick, gold: 0, tag: m.caught.includes(s.sid) ? '착해진 도깨비' : '숨은 도깨비' })));
+    const nick = (sid) => esc((ref.bySid(sid) || {}).nick || '?');
     $ui.innerHTML =
-      '<div class="newking big">' + (firsts.length ? '끝! ' + (firsts.length > 1 ? '공동 1등 ' : '1등 ') + esc(firsts.map((b) => b.nick).join(', ')) : '끝!') + '</div><div class="ranks"><h3>최종 순위</h3><ol id="rl"></ol></div>' +
+      '<div class="newking big">' + (m.winner === 'village' ? '마을 승! 마을에 도깨비가 없어졌어요' : '도깨비 승!') + '</div>' +
+      '<div class="ranks mlog"><h3>지목 다시 보기</h3><ol>' +
+      (m.log.length ? m.log.map((l) => '<li><span class="n">' + l.r + '</span><span class="nm">' + nick(l.by) + ' → ' + nick(l.target) + '</span><span class="g">' + (l.pass ? (l.goblin ? '도깨비! → 착해짐' : '착한 친구') : '부결') + '</span></li>').join('') : '<li>지목이 없었어요</li>') +
+      '</ol><p class="mg">도깨비: ' + m.goblins.map(nick).join(', ') + '</p></div>' +
       '<div class="endbtns"><button class="go" id="res">결과표 보기</button><button class="ghost" id="new">새 판</button></div>';
-    drawRanks(board.map((b) => Object.assign({}, b, { mv: 0, nw: 0 })));
     document.getElementById('res').onclick = () => {
       showRes = true;
       drawResults();
@@ -639,6 +714,133 @@
       scSetup();
     };
     tools();
+  }
+  function drawRanks(board) {
+    const ol = document.getElementById('rl');
+    if (!ol) return;
+    ol.style.setProperty('--n', Math.max(board.length, 10));
+    ol.innerHTML = board
+      .map((b, i) => {
+        const mv = b.nw ? '<span class="mv new">NEW</span>' : b.mv > 0 ? '<span class="mv up">▲' + b.mv + '</span>' : b.mv < 0 ? '<span class="mv dn">▼' + -b.mv + '</span>' : '<span class="mv"></span>';
+        const rk = rankOf(b, board);
+        return '<li class="' + (rk === 1 ? 'k1' : rk && i < QP.PODIUM ? 'top' : '') + (rk ? '' : ' zero') + (b.mv ? ' moved' : '') + '"><span class="n">' + (rk || '–') + '</span><img src="' + portrait(b.av) + '"><span class="nm">' + esc(b.nick) + '</span><span class="g">' + fmt(b.gold) + '</span>' + mv + '</li>';
+      })
+      .join('');
+  }
+  function tick() {
+    if (!ref || (screen !== 'game' && screen !== 'mafia')) return;
+    const S = ref.S;
+    const left = Math.max(0, S.endsAt - net.now()) / QP.ms(1);
+    const c = S.cfg;
+    const total = { question: c.tQ, chest: c.tChest, reveal: c.tReveal, result: c.tResult + (S.m && S.m.rollEnd ? c.tRoll || 0 : 0), vote: c.tVote, show: c.tShow }[S.phase] || 1;
+    const g = (id) => document.getElementById(id);
+    if (!g('rd')) return;
+    g('rd').textContent = S.mode === 'mafia' ? S.round + ' / ' + c.Q + '번째 문제' : S.round + '라운드';
+    g('phn').textContent = { question: '문제 푸는 중', chest: '상자 고르는 중', reveal: '결과 발표', result: '정답 · 돋보기 · 지목권', vote: '투표', show: '공개' }[S.phase] || '';
+    g('pht').textContent = Math.ceil(left);
+    g('phb').style.width = Math.min(100, (100 * left) / total) + '%';
+    if (g('left')) {
+      const rest = Math.max(0, S.startedAt + QP.ms(c.minutes * 60) - net.now()) / QP.ms(1);
+      g('left').textContent = rest > 0 ? '판 끝까지 ' + Math.floor(rest / 60) + ':' + String(Math.floor(rest % 60)).padStart(2, '0') : '마지막 문제!';
+    }
+    const seats = Object.values(S.seats);
+    if (S.phase === 'question') {
+      const got = seats.filter((s) => s.cur && s.cur.r === S.round);
+      g('ansn').textContent = '답한 친구 ' + got.filter((s) => s.ans).length + ' / ' + got.length;
+      g('ansn').hidden = false;
+    } else g('ansn').hidden = true;
+  }
+  function scEnd() {
+    const T = tv();
+    if (screen === 'end') return tools();
+    screen = 'end';
+    T.setView('game');
+    const board = ref.S.board || ref.makeBoard();
+    // 시상에서는 출석 번호를 공개한다(2026-11-04 담임: 「51번 용감한 여우」처럼 번호도 크게)
+    const numOf = (sid) => (ref.bySid(sid) || {}).num;
+    const withNum = (b) => Object.assign({}, b, { nick: (numOf(b.sid) ? numOf(b.sid) + '번 ' : '') + b.nick });
+    T.setTop(podiumKids(board.map(withNum)));
+    const firsts = board.filter((b) => rankOf(b, board) === 1);
+    const endBanner = firsts.length ? '끝! ' + (firsts.length > 1 ? '공동 1등 ' : '1등 ') + esc(firsts.map((b) => withNum(b).nick).join(', ')) : '끝!';
+    $ui.innerHTML =
+      '<div class="newking big" id="endnk">' + endBanner + '</div><div class="ranks"><h3>최종 순위</h3><ol id="rl"></ol></div>' +
+      '<div class="endbtns"><button class="go" id="res">결과표 보기</button><button class="ghost" id="new">새 판</button></div>';
+    drawRanks(board.map((b) => Object.assign(withNum(b), { mv: 0, nw: 0 })));
+    awards(board.filter((b) => b.gold > 0 && rankOf(b, board) <= QP.PODIUM).map((b) => Object.assign(withNum(b), { num: numOf(b.sid), rank: rankOf(b, board) })));
+    document.getElementById('res').onclick = () => {
+      showRes = true;
+      drawResults();
+    };
+    document.getElementById('new').onclick = () => {
+      const a = document.getElementById('award');
+      if (a) a.remove();
+      saved.set(null);
+      ref.stop();
+      ref = null;
+      showRes = false;
+      $tools.innerHTML = '';
+      scSetup();
+    };
+    tools();
+  }
+  // 시상식: 1등부터 차례로 큰 카드(번호·별명·금) + 꽃가루, 다 나오면 아래에 나란히 모인다. 화면을 누르면 다음 사람으로
+  function awards(list) {
+    if (!list.length) return;
+    const nk = document.getElementById('endnk');
+    const nkFinal = nk ? nk.innerHTML : ''; // 다 끝나면 「끝! 1등 ○○」로 되돌린다
+    const box = document.createElement('div');
+    box.id = 'award';
+    box.innerHTML = '<div class="astage"></div><div class="ahall"></div><button class="askip">건너뛰기</button>';
+    document.body.appendChild(box);
+    const stage = box.querySelector('.astage'),
+      hall = box.querySelector('.ahall');
+    let i = 0,
+      timer = null;
+    const COL = ['#f2c14e', '#e2475a', '#3d82c4', '#4ea65a', '#b77ad9', '#ff9d3c'];
+    function confetti() {
+      for (let k = 0; k < 60; k++) {
+        const c = document.createElement('i');
+        c.className = 'conf';
+        c.style.left = 50 + (Math.random() - 0.5) * 30 + '%';
+        c.style.background = COL[k % COL.length];
+        c.style.setProperty('--dx', (Math.random() - 0.5) * 900 + 'px');
+        c.style.setProperty('--dy', -(200 + Math.random() * 420) + 'px');
+        c.style.setProperty('--r', Math.random() * 720 - 360 + 'deg');
+        c.style.animationDelay = Math.random() * 0.15 + 's';
+        stage.appendChild(c);
+        setTimeout(() => c.remove(), 2600);
+      }
+    }
+    const card = (b, big) =>
+      '<div class="acard r' + Math.min(b.rank, 4) + (big ? ' big' : '') + '"><div class="arank">' + (b.rank === 1 ? '👑 ' : '') + b.rank + '등</div><img src="' + JK.dollPortrait(b.av, big ? 220 : 90) + '" alt="">' +
+      '<div class="anum">' + (b.num ? b.num + '번' : '') + '</div><div class="anick">' + esc(String(b.nick).replace(/^\d+번 /, '')) + '</div><div class="agold"><i class="coin"></i>' + fmt(b.gold) + '</div></div>';
+    function next() {
+      clearTimeout(timer);
+      if (i > 0) hall.insertAdjacentHTML('beforeend', card(list[i - 1], false));
+      if (i >= list.length) return finish();
+      const b = list[i++];
+      stage.innerHTML = card(b, true);
+      confetti();
+      timer = setTimeout(next, b.rank === 1 ? 4200 : 3000);
+    }
+    function finish() {
+      clearTimeout(timer);
+      stage.innerHTML = '';
+      box.classList.add('done');
+      const k = box.querySelector('.askip');
+      if (k) k.remove();
+      if (nk) nk.innerHTML = nkFinal;
+    }
+    if (nk) nk.textContent = '시상식!';
+    box.addEventListener('click', (e) => {
+      if (box.classList.contains('done')) return;
+      if (e.target.closest('.askip')) {
+        while (i < list.length) hall.insertAdjacentHTML('beforeend', card(list[i++], false));
+        return finish();
+      }
+      next();
+    });
+    timer = setTimeout(next, 1200);
   }
 
   /* ================= 선생님 도구: 출석판·알림·판 끝내기 ================= */

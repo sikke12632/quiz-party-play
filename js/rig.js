@@ -2,8 +2,8 @@
  * TV(단상·시상대)에서만 쓴다. 가만히 서 있는 인형(모이는 곳)은 dolls.js의 한 덩어리 인형을 그대로 쓴다.
  *
  *   const r = JK.makeRig(아바타번호);  scene.add(r);
- *   r.userData.pose('cheer');   // 팔: rest cheer wave clap spin sway droop wow
- *   r.userData.face('happy');   // 얼굴: normal joy happy wow sad sleepy
+ *   r.userData.pose('cheer');   // 팔: rest cheer wave clap spin sway droop wow nervous point
+ *   r.userData.face('happy');   // 얼굴: normal joy happy wow sad sleepy shout scared
  *   r.userData.update(시간, dt) // 매 장면마다
  */
 (function () {
@@ -152,6 +152,7 @@
     sad: ['dot', 'frown', 'sadBrow'],
     sleepy: ['sleepyEye', 'smile'],
     shout: ['wide', 'open'],
+    scared: ['wide', 'frown', 'sadBrow'], // 지목당해 불안한 얼굴
   };
 
   /* ---------- 팔 자세: 오른팔 방향(어깨에서 손 쪽). 왼팔은 x를 뒤집는다 ---------- */
@@ -175,6 +176,13 @@
     },
     droop: (t) => [V(0.1, -1, 0.08), V(0.1, -1, 0.08)],
     wow: (t) => [V(0.8, 0.75, 0.3), V(0.8, 0.75, 0.3)],
+    // 손을 가슴 앞에 모으고 달달 떤다(지목당함)
+    nervous: (t) => {
+      const k = Math.sin(t * 34) * 0.06;
+      return [V(-0.62, 0.05 + k, 0.8), V(-0.62, 0.05 - k, 0.8)];
+    },
+    // 오른손으로 오른쪽(+x)을 가리킨다
+    point: (t) => [V(0.85, 0.2 + Math.sin(t * 6) * 0.05, 0.45), V(-0.45, -0.52, 0.75)],
   };
   const DOWN = new T.Vector3(0, -1, 0);
 

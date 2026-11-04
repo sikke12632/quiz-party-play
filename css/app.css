@@ -364,6 +364,109 @@ a.mini { text-decoration: none; display: inline-block; }
 .tree details.extra h4 { font-size: 16px; }
 .tree details.extra .prow { min-height: 34px; font-size: 15px; }
 
+/* ================= 도깨비 찾기: 아이 화면 ================= */
+button.mbtn { font-family: 'QPTitle', serif; font-size: 17px; padding: 6px 14px; border-radius: 999px; border: 2px solid #b39a6a; background: var(--cream); color: #4a3828; }
+.rolecard { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; width: 460px; background: #2f3b3a; color: #f6e7c4; border-radius: 26px; padding: 22px 28px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,.4); cursor: pointer; }
+.rolecard .lb { margin: 0; font-size: 15px; opacity: .8; }
+.rolecard h2 { margin: 6px 0; font-family: 'QPTitle', serif; font-weight: normal; font-size: 44px; color: #ffe08a; }
+.rolecard p { margin: 6px 0; font-size: 19px; }
+.rolecard .sm { font-size: 14px; opacity: .75; }
+.dgrid { position: fixed; left: 16px; right: 16px; top: 120px; bottom: 12px; display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; align-content: start; overflow: auto; }
+.dgrid.small { top: 116px; }
+.dgrid .dc { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid #e2cb98; border-radius: 14px; background: var(--cream); padding: 4px 2px 6px; font-size: 14px; min-height: 104px; }
+.dgrid .dc img { width: 64px; height: 64px; border-radius: 50%; background: #f1e3c3; }
+.dgrid .dc.hint { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242,193,78,.5); }
+.dgrid .dc.caught { background: #f6d3cc; }
+.dgrid .dc.good { background: #d9efd3; }
+.dgrid .dc.me { background: #e3f1fb; }
+.dgrid .dc.x::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 70px; color: rgba(156,47,37,.75); pointer-events: none; }
+.dgrid .dc:disabled { opacity: .55; }
+.dgrid .dc .st { position: absolute; top: 2px; right: 2px; font-style: normal; font-size: 11px; padding: 0 6px; border-radius: 999px; background: #9c2f25; color: #fff; }
+.dgrid .dc .st.ok { background: #2c6d36; } .dgrid .dc .st.me { background: #22578a; } .dgrid .dc .st.hn { background: var(--gold); color: #3b2508; }
+.mboard { position: fixed; inset: 64px 0 0 0; z-index: 20; background: rgba(251,243,223,.98); }
+.mboard .mbh { display: flex; align-items: center; gap: 10px; padding: 10px 18px; font-size: 20px; }
+.mboard .mbh b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 24px; }
+.mboard .mbh small { flex: 1; color: var(--brown); font-size: 14px; }
+.mboard .dgrid { top: 120px; }
+.pickhead .kind.mag { background: var(--teal); box-shadow: 0 3px 0 var(--teal-d); }
+.pickhead .mbtn { margin-left: 10px; vertical-align: 3px; }
+.mbox h2 { font-family: 'QPTitle', serif; font-weight: normal; font-size: 36px; margin: 8px 0 16px; }
+.chestbtn { position: relative; width: 240px; height: 190px; border: 0; background: transparent; cursor: pointer; }
+.chestbtn .lid { position: absolute; left: 10px; right: 10px; top: 10px; height: 70px; border-radius: 60px 60px 8px 8px; background: linear-gradient(#c4553f, #9c3a28); box-shadow: inset 0 0 0 8px #e0ab48; }
+.chestbtn .bodyc { position: absolute; left: 10px; right: 10px; top: 76px; height: 100px; border-radius: 8px; background: linear-gradient(#b8492f, #8a3220); box-shadow: inset 0 0 0 8px #e0ab48, 0 8px 0 #5e2416; }
+.chestbtn .bodyc::after { content: ''; position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 34px; height: 42px; border-radius: 6px; background: #f2c14e; }
+.chestbtn:active { transform: translateY(4px); }
+.emptybox { font-family: 'QPTitle', serif; font-size: 34px; background: var(--paper); padding: 20px 36px; border-radius: 22px; box-shadow: 0 8px 24px rgba(60,40,20,.18); }
+.magres { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 26px; background: var(--paper); padding: 18px 30px; border-radius: 22px; box-shadow: 0 8px 24px rgba(60,40,20,.18); }
+.magres img { width: 110px; height: 110px; border-radius: 50%; background: #f1e3c3; }
+.magres em { font-style: normal; font-family: 'QPTitle', serif; color: #2c6d36; }
+.magres.g em { color: #9c2f25; }
+.magres small { font-size: 15px; color: var(--brown); }
+.rollnote { font-size: 20px; color: var(--brown); margin-top: 16px; animation: rollpulse 0.6s ease-in-out infinite alternate; }
+@keyframes rollpulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+.waitnote2 { font-size: 19px; color: var(--brown); margin-top: 14px; }
+.nomcard { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.nomcard .who { display: flex; flex-direction: column; align-items: center; font-family: 'QPTitle', serif; font-size: 22px; }
+.nomcard .who img { width: 110px; height: 110px; border-radius: 50%; background: #f1e3c3; }
+.nomcard .who.t img { box-shadow: 0 0 0 5px #e2475a; }
+.nomcard .arrow { font-family: 'QPTitle', serif; font-size: 26px; color: #9c2f25; }
+.mvote h2 { font-family: 'QPTitle', serif; font-weight: normal; font-size: 32px; margin: 14px 0 10px; }
+.mvote p { font-size: 19px; color: var(--brown); }
+.vbtns { display: flex; gap: 18px; justify-content: center; }
+.vbtns button.go { font-size: 28px; padding: 14px 30px; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.vbtns button.go small { font-family: var(--qfont); font-size: 15px; opacity: .85; }
+.vbtns button.no { background: var(--a2); box-shadow: 0 5px 0 var(--a2d); }
+.mshow h1 { font-size: 46px; margin: 10px 0; }
+.mshow.caught h1 { color: #9c2f25; } .mshow.good h1 { color: #2c6d36; }
+.mshow p { font-size: 20px; color: var(--brown); }
+
+/* ================= 도깨비 찾기: TV ================= */
+.modehelp { margin: 6px 0 0; font-size: 15px; color: var(--brown); }
+.setup .mafiaopt .num { display: inline-block; margin: 4px 16px 4px 0; }
+.chip.mode.maf { background: #2f3b3a; color: #ffe08a; }
+.classrule { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: #2f3b3a; color: #f6e7c4; padding: 8px 22px; border-radius: 999px; font-size: 18px; white-space: nowrap; }
+.classrule b { color: #ffe08a; font-weight: normal; }
+.plate.hint { box-shadow: 0 0 0 3px var(--gold), 0 2px 6px rgba(60,40,20,.22); }
+.plate.caught { background: #6a8f3a; color: #fff; }
+.plate.caught::after { content: ' 착해짐'; font-size: 12px; }
+.plate.good { background: #2c6d36; color: #fff; }
+.plate.good::after { content: ' 착해요'; font-size: 12px; }
+.plate.target { background: #e2475a; color: #fff; transform-origin: center; animation: pulse .8s infinite alternate; }
+.pop3d { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; font-weight: 900; color: #fff; -webkit-text-stroke: 2px #4a3828; paint-order: stroke fill; text-shadow: 0 4px 0 rgba(60,40,20,.35); }
+.pop3d.ttan { font-size: 34px; color: #ffe27a; animation: popin .18s ease-out; }
+.pop3d.tbig { font-size: 76px; color: #ffd84a; animation: popbig .45s cubic-bezier(.2,1.6,.4,1); }
+.pop3d.kong { font-size: 110px; color: #ff6a55; -webkit-text-stroke: 3px #5a1f17; animation: popbig .4s cubic-bezier(.2,1.8,.4,1); }
+.pop3d.gob { font-size: 64px; color: #ff8a6a; -webkit-text-stroke: 3px #5a1f17; animation: popbig .5s cubic-bezier(.2,1.6,.4,1); }
+.pop3d.good { font-size: 58px; color: #ffe27a; -webkit-text-stroke: 3px #2c6d36; animation: popbig .5s cubic-bezier(.2,1.6,.4,1); }
+.pop3d.phew { font-size: 54px; color: #dff3ff; -webkit-text-stroke: 3px #22578a; animation: popbig .5s ease-out; }
+@keyframes popin { from { opacity: 0; font-size: 10px; } }
+@keyframes popbig { from { opacity: 0; font-size: 12px; } }
+.plate.by { background: #22578a; color: #fff; }
+@keyframes pulse { to { filter: brightness(1.2); } }
+.mpanel { position: fixed; right: 14px; top: 12px; bottom: 12px; width: 360px; display: flex; flex-direction: column; gap: 10px; }
+.mpanel > div { background: rgba(251,244,228,.95); border-radius: 18px; padding: 10px 14px; box-shadow: 0 6px 20px rgba(60,40,20,.18); }
+.mq .qq { margin: 0; font-size: 22px; line-height: 1.4; }
+.mq .qa { margin: 8px 0 0; font-size: 17px; color: #2c6d36; }
+.mq .qa b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 22px; }
+.mq .qn { margin: 4px 0 0; font-size: 15px; color: var(--brown); }
+.gauge { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.gauge .bar { flex: 1; height: 14px; border-radius: 7px; background: #e6d6b6; overflow: hidden; }
+.gauge .bar i { display: block; height: 100%; background: linear-gradient(90deg, #f2c14e, #e0782a); }
+.gauge b { font-family: 'QPTitle', serif; font-weight: normal; font-variant-numeric: tabular-nums; }
+.mstat { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 16px; }
+.mstat b { font-family: 'QPTitle', serif; font-weight: normal; color: #9c2f25; font-size: 19px; }
+.mstat .mag { color: var(--teal-d); }
+.hints { overflow: auto; flex: 1; }
+.hints.none { flex: none; color: var(--brown); font-size: 15px; }
+.hint { font-size: 15px; padding: 6px 0; border-bottom: 1px dashed #e2cb98; }
+.hint.last { font-weight: normal; }
+.hint b { font-family: 'QPTitle', serif; font-weight: normal; color: #9a6512; }
+.hint span { display: inline-block; margin: 2px 4px 0 0; padding: 1px 8px; border-radius: 999px; background: #fff3c4; border: 1px solid #e2cb98; }
+.hint.last span { background: var(--gold); }
+.newking small { font-family: var(--qfont); font-size: 16px; margin-left: 8px; opacity: .85; }
+.newking b { font-weight: normal; color: #9c2f25; }
+.mlog .mg { margin: 6px 4px 0; font-size: 15px; color: #9c2f25; }
+
 /* 3D(WebGL)가 막힌 컴퓨터·기기: 그림 없이 (학교 PC) */
 body.no3d #cv, body.no3d #chestcv { display: none; }
 body.tv.no3d { background: radial-gradient(ellipse at 40% 70%, #bfe0a0 0%, #9fcf86 35%, #f3e3d3 75%); }
@@ -427,3 +530,47 @@ body.tv.no3d .ranks:not(.mlog) h3 { font-size: 28px; }
 #tools .tbtns { opacity: .9; }
 #tools .tbtns button.endbtn { font-size: 17px; padding: 6px 16px; border: 2px solid var(--red); color: var(--red-d); background: #fff5ee; }
 #tools .tbtns button.endbtn:disabled { border-color: #b39a6a; color: #6b4a2a; background: rgba(251,243,223,.95); }
+
+/* 도깨비 찾기 2판: 수근수근 소문(돋보기 결과) */
+.rumors { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; font-size: 15px; }
+.rumors b { font-family: 'QPTitle', serif; font-weight: normal; margin-right: 4px; }
+.rumors span { padding: 2px 10px; border-radius: 999px; background: #fbe3dc; color: #8f3022; }
+.rumors span.n { background: #dcefd9; color: #2c6d36; }
+.emptybox small { display: block; font-family: var(--qfont); font-size: 17px; color: var(--brown); margin-top: 4px; }
+.magres > small:first-child { font-size: 15px; }
+/* TV: 수근수근 소문판·말풍선 */
+.mrum { background: var(--cream); border-radius: 16px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 15px; box-shadow: 0 2px 8px rgba(60,40,20,.12); max-height: 30vh; overflow: hidden; }
+.mrum b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 18px; margin-right: 4px; }
+.mrum span { padding: 2px 10px; border-radius: 999px; background: #fbe3dc; color: #8f3022; }
+.mrum span.n { background: #dcefd9; color: #2c6d36; }
+.mrum span.new { box-shadow: 0 0 0 2px var(--gold); font-weight: bold; }
+.mrum.none { color: var(--brown); font-size: 14px; }
+.pop3d.rum { font-size: 30px; -webkit-text-stroke: 0; color: #fff; padding: 4px 14px; border-radius: 18px; text-shadow: none; animation: popin .25s ease-out; }
+.pop3d.rum.y { background: #c4553f; } .pop3d.rum.n { background: #2f8f5a; }
+
+/* ---------- 황금 찾기 시상식(2026-11-04): 1등부터 큰 카드 + 꽃가루, 번호 공개 ---------- */
+#award { position: fixed; inset: 0; z-index: 30; pointer-events: auto; background: radial-gradient(ellipse at 50% 45%, rgba(255,240,200,.55), rgba(60,40,20,.35)); transition: background .6s; }
+#award.done { pointer-events: none; background: transparent; }
+#award .astage { position: absolute; left: 0; right: 340px; top: 0; bottom: 150px; display: flex; align-items: center; justify-content: center; overflow: visible; }
+#award .ahall { position: absolute; left: 20px; right: 360px; bottom: 76px; display: flex; gap: 12px; justify-content: center; }
+#award .askip { position: absolute; right: 356px; bottom: 20px; pointer-events: auto; font-size: 16px; padding: 6px 16px; border-radius: 999px; border: 1.5px solid #b39a6a; background: rgba(251,243,223,.95); color: #6b4a2a; }
+.acard { background: linear-gradient(#fffaf0, #f6e7c6); border-radius: 22px; box-shadow: 0 10px 30px rgba(60,40,20,.35), inset 0 0 0 4px #e8cf8f; text-align: center; padding: 10px 16px 12px; color: var(--ink); }
+.acard.big { padding: 18px 46px 22px; animation: aIn .7s cubic-bezier(.2,1.5,.4,1); min-width: 420px; }
+.acard.big.r1 { box-shadow: 0 0 0 6px #f2c14e, 0 0 60px 20px rgba(242,193,78,.75), 0 14px 40px rgba(60,40,20,.4); animation: aIn .8s cubic-bezier(.2,1.6,.4,1), aGlow 1.2s ease-in-out .8s infinite alternate; }
+@keyframes aIn { from { transform: scale(.2) rotate(-8deg); } }
+@keyframes aGlow { to { box-shadow: 0 0 0 6px #ffd84a, 0 0 90px 34px rgba(255,216,74,.9), 0 14px 40px rgba(60,40,20,.4); } }
+.acard .arank { font-family: 'QPTitle', serif; font-size: 26px; color: #8a6420; }
+.acard.big .arank { font-size: 56px; }
+.acard.r1 .arank { color: #c8902a; } .acard.r2 .arank { color: #7d8a96; } .acard.r3 .arank { color: #b06a32; }
+.acard img { width: 64px; height: 64px; border-radius: 50%; background: #fff3dc; display: block; margin: 2px auto; }
+.acard.big img { width: 190px; height: 190px; }
+.acard .anum { font-family: 'QPTitle', serif; font-size: 26px; color: var(--red); line-height: 1.1; }
+.acard.big .anum { font-size: 84px; }
+.acard .anick { font-family: 'QPTitle', serif; font-size: 20px; }
+.acard.big .anick { font-size: 48px; }
+.acard .agold { font-size: 16px; color: #7a5a16; }
+.acard.big .agold { font-size: 30px; margin-top: 4px; }
+.acard .coin { width: .9em; height: .9em; margin-right: 4px; }
+#award .ahall .acard { animation: aIn .4s ease-out; }
+.conf { position: absolute; top: 55%; width: 12px; height: 18px; border-radius: 3px; animation: conf 2.4s cubic-bezier(.15,.7,.4,1) forwards; }
+@keyframes conf { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 60% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 700px)) rotate(var(--r)); opacity: 0; } }
