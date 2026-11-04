@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>실시간 시험방</title>
+<style>
+@font-face { font-family: 'QPBody'; src: url('fonts/GowunDodum-sub.woff2') format('woff2'); }
+@font-face { font-family: 'QPTitle'; src: url('fonts/SongMyung-sub.woff2') format('woff2'); }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #f2e6d6; font-family: 'QPBody', 'Malgun Gothic', sans-serif; color: #2a211b; user-select: none; -webkit-user-select: none; touch-action: none; }
+#stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+body.playing #stage { top: 52px; }
+body.playing.host #stage { right: 360px; }
+canvas { display: block; border-radius: 12px; box-shadow: 0 6px 20px rgba(60,40,20,.2); }
+canvas[hidden] { display: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+.card { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); background: #fbf3df; border-radius: 22px; padding: 22px 28px; box-shadow: 0 10px 30px rgba(60,40,20,.25); text-align: center; max-width: 92vw; }
+h2 { font-family: 'QPTitle', serif; font-weight: normal; margin: 0 0 8px; font-size: 30px; }
+button { font-family: inherit; cursor: pointer; }
+.go { font-family: 'QPTitle', serif; font-size: 24px; padding: 10px 34px; border: 0; border-radius: 999px; background: #d9573f; color: #fff4e4; box-shadow: 0 5px 0 #8f3022; margin-top: 8px; }
+.ghost { font-size: 16px; padding: 6px 16px; border-radius: 999px; border: 1.5px solid #b39a6a; background: #fbf3df; color: #6b4a2a; }
+.code { display: flex; gap: 8px; justify-content: center; margin: 10px 0; }
+.code i { font-style: normal; width: 52px; height: 64px; border-radius: 12px; background: #2f3a3a; color: #f2c14e; font-family: 'QPTitle', serif; font-size: 40px; display: flex; align-items: center; justify-content: center; }
+.code.sm { display: inline-flex; margin: 0 6px; } .code.sm i { width: 30px; height: 36px; font-size: 24px; }
+.pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 8px; justify-content: center; }
+.pad button { height: 56px; font-size: 24px; border-radius: 14px; border: 0; background: #fff; box-shadow: 0 3px 0 #c9b48f; }
+.nums { display: grid; grid-template-columns: repeat(6, 60px); gap: 8px; }
+.nums button { height: 52px; font-size: 22px; border-radius: 12px; border: 0; background: #fff; box-shadow: 0 3px 0 #c9b48f; }
+.err { color: #c4302a; min-height: 1.2em; }
+.top { position: fixed; left: 0; right: 0; top: 0; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #fbf3df; box-shadow: 0 2px 8px rgba(60,40,20,.15); font-size: 18px; }
+.top .sp { flex: 1; }
+.pads { position: fixed; right: 16px; bottom: 16px; display: grid; grid-template-columns: repeat(3, 76px); grid-template-rows: repeat(2, 76px); gap: 8px; }
+.pads button { font-size: 30px; border: 0; border-radius: 18px; background: rgba(255,255,255,.85); box-shadow: 0 4px 0 #c9b48f; touch-action: none; }
+.pads button.on { background: #ffd23f; }
+.pads [data-dir=up] { grid-column: 2; } .pads [data-dir=left] { grid-column: 1; grid-row: 2; } .pads [data-dir=down] { grid-column: 2; grid-row: 2; } .pads [data-dir=right] { grid-column: 3; grid-row: 2; }
+.live { position: fixed; left: 12px; bottom: 12px; background: rgba(251,243,223,.9); border-radius: 10px; padding: 4px 10px; font-size: 14px; }
+.side { position: fixed; right: 0; top: 52px; bottom: 0; width: 360px; overflow: auto; background: #fbf3df; padding: 12px; box-sizing: border-box; text-align: center; }
+.side .qr img { width: 150px; height: 150px; }
+.side .url { font-size: 13px; word-break: break-all; color: #6b4a2a; }
+.verdict { font-size: 18px; font-weight: bold; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 3px 4px; border-bottom: 1px solid #e6d6b4; }
+tr.ok td:first-child { color: #2c6d36; font-weight: bold; } tr.bad td:first-child { color: #c4302a; font-weight: bold; } tr.none { color: #aaa; }
+td.ua { font-size: 11px; color: #7a6a58; }
+.sm { font-size: 13px; color: #6b4a2a; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv"></canvas><canvas id="cv3" hidden></canvas></div>
+<div id="ui"></div>
+<script src="lib/three.min.js?v=1"></script>
+<script src="lib/qrcode.min.js?v=1"></script>
+<script src="js/toy.js?v=1"></script>
+<script src="js/props.js?v=1"></script>
+<script src="js/kit.js?v=1"></script>
+<script src="js/dolls.js?v=1"></script>
+<script src="js/core/qp.js?v=1"></script>
+<script src="js/net/mock.js?v=1"></script>
+<script src="js/net/fire.js?v=1"></script>
+<script src="js/net/connect.js?v=1"></script>
+<script src="js/core/nettest.js?v=1"></script>
+<script>if (/[?&]host/.test(location.search)) document.body.classList.add('host');</script>
+<script src="js/nettest-ui.js?v=1"></script>
+</body>
+</html>

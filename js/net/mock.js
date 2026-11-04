@@ -56,9 +56,13 @@
 
   /* ---------- 규칙 흉내 (firestore.rules 와 같은 뜻) ---------- */
   // path: qp_games/{g} | qp_games/{g}/joins/{uid} | qp_games/{g}/players/{num} | qp_games/{g}/private/state
+  // 실시간 시험방(qp_nettest): 방은 연 사람(owner)만 쓰고, 아이는 kids/{자기 uid} 만
+  const ntOwner = new Map();
+  const NT_KEYS = ['n', 'x', 'y', 'seq', 'at', 'stats', 'ua'];
   function canRead(path, who, data) {
     if (who.teacher) return true;
     const p = path.split('/');
+    if (p[0] === 'qp_nettest') return p.length === 2 || p[3] === who.uid || ntOwner.get(p[1]) === who.uid;
     if (p[0] !== 'qp_games') return false; // qp_packs(넣은 문제 묶음) 등은 선생님만
     if (p.length === 2) return true; // 판 문서
     if (p[2] === 'joins') return p[3] === who.uid;
@@ -67,6 +71,16 @@
   }
   function canWrite(path, who, before, after) {
     const p = path.split('/');
+    if (p[0] === 'qp_nettest') {
+      if (p.length === 2) {
+        const ok = before ? before.owner === who.uid && (!after || after.owner === who.uid) : after && after.owner === who.uid;
+        if (ok && after) ntOwner.set(p[1], who.uid);
+        return ok;
+      }
+      if (p[2] !== 'kids') return false;
+      if (!after) return p[3] === who.uid || ntOwner.get(p[1]) === who.uid;
+      return p[3] === who.uid && Object.keys(after).every((k) => NT_KEYS.includes(k));
+    }
     if (who.teacher) return true;
     if (p[0] !== 'qp_games' || p.length === 2) return false;
     if (p[2] === 'joins') return p[3] === who.uid && after && Object.keys(after).every((k) => ['num', 'tab', 'at', 'ts', 'res', 'rat'].includes(k)) && changedKeys(before, after).every((k) => ['num', 'tab', 'at', 'ts'].includes(k));
