@@ -560,6 +560,8 @@
       };
     }
     T.syncKids(kidsOf());
+    if (ref.S.mode === 'mafia') T.setLamps(0, ref.S.cfg.limit);
+    else T.hideLamps();
     document.getElementById('n').textContent = Object.keys(ref.S.seats).length;
     if (document.body.classList.contains('no3d')) {
       // 3D 섬 대신 들어온 친구 이름표
@@ -622,7 +624,23 @@
     return st;
   }
   let mafiaSig = '',
-    rumorSeen = -1;
+    rumorSeen = -1,
+    lampSeen = -1,
+    lampShown = 0;
+  // 등불 아이콘(켜짐·꺼짐)
+  const lampIcons = (wrong, limit) => '<span class="lamps">' + Array.from({ length: limit }, (_, i) => '<i class="lp ' + (i < limit - wrong ? 'on' : 'off') + '"></i>').join('') + '</span>';
+  // 「마을 등불이 하나 꺼졌어요」 크게(화면 가운데)
+  function lampOutCard(wrong, limit) {
+    const old = document.getElementById('lampout');
+    if (old) old.remove();
+    const d = document.createElement('div');
+    d.id = 'lampout';
+    const all = wrong >= limit;
+    d.innerHTML = '<div class="lo">' + (all ? '마을 등불이 모두 꺼졌어요…' : '마을 등불이 하나 꺼졌어요') + '</div>' + lampIcons(wrong, limit) + '<p>' + (all ? '도깨비가 이겼어요' : '착한 친구를 잘못 콩했어요 · 등불이 다 꺼지면 도깨비가 이겨요') + '</p>';
+    document.body.appendChild(d);
+    setTimeout(() => d.classList.add('bye'), 3600);
+    setTimeout(() => d.remove(), 4300);
+  }
   function scMafia() {
     const T = tv();
     const S = ref.S,
@@ -633,9 +651,10 @@
       T.panelPx = 470; // 도깨비 찾기: 오른쪽 칸이 넓다(힌트·소문 크게)
       $ui.innerHTML =
         '<div class="roundbar"><span class="rd" id="rd"></span><span class="ph"><span id="phn"></span> <b id="pht"></b>초 <span class="bar"><i id="phb"></i></span></span><span class="left" id="ansn"></span></div>' +
-        '<div class="newking" id="nk" hidden></div><div class="mpanel" id="mpanel"></div>';
+        '<div class="newking" id="nk" hidden></div><div class="mpanel" id="mpanel"></div><div class="lamphud" id="lamphud"></div>';
       mafiaSig = '';
       rumorSeen = -1;
+      lampSeen = -1;
     }
     T.syncKids(kidsOf());
     const pub = ref.pub();
@@ -643,6 +662,21 @@
     T.markDolls(mafiaStates(g, S));
     // 지목권 뽑기(빛 딴딴딴…딴!)·지목당한 친구 가까이·공개 「콩!」 연출
     T.mafiaStage({ phase: S.phase, round: S.round, cand: m.cand || [], by: m.nominator, nom: m.nom, last: m.last, since: (ref.net.now() - S.phaseAt) / QP.ms(1) });
+    // 등불: 처음(이어 하기 포함)은 그대로, 잘못 콩으로 늘면 「착한 친구!」 뒤에 깜빡이다 꺼지고 마을이 어두워진다
+    if (lampSeen < 0) {
+      lampSeen = lampShown = m.wrong;
+      T.setLamps(m.wrong, S.cfg.limit);
+    } else if (m.wrong > lampSeen) {
+      lampSeen = m.wrong;
+      const w = m.wrong;
+      setTimeout(() => {
+        lampShown = w;
+        T.setLamps(w, S.cfg.limit, true);
+        lampOutCard(w, S.cfg.limit);
+        const lh = document.getElementById('lamphud');
+        if (lh) lh.innerHTML = '<b>마을 등불</b>' + lampIcons(w, S.cfg.limit);
+      }, 2300);
+    }
     // 새 소문: 그 인형 위에 말풍선(처음 그릴 때·이어 하기 때는 옛 소문을 다시 띄우지 않는다)
     const rums = m.rumors || [];
     if (rumorSeen < 0) rumorSeen = rums.length;
@@ -662,13 +696,16 @@
       let h =
         (q ? '<div class="mq"><p class="qq">' + esc(q.q) + '</p>' + (showAns ? '<p class="qa">정답 <b>' + esc(QP.answerText(q)) + '</b>' + (q.explain ? ' · ' + esc(q.explain) : '') + '</p><p class="qn">맞힌 친구 ' + m.ok.length + '명</p>' : '') + '</div>' : '') +
         '<div class="gauge"><span>힌트까지</span><span class="bar"><i style="width:' + Math.min(100, (100 * pub.gauge) / pub.H) + '%"></i></span><b>' + pub.gauge + ' / ' + pub.H + '</b></div>' +
-        '<div class="mstat"><span>착해진 도깨비 <b>' + pub.caught.length + ' / ' + S.cfg.G + '</b></span><span>잘못 지목 ' + '●'.repeat(pub.wrong) + '○'.repeat(Math.max(0, pub.limit - pub.wrong)) + '</span></div>' +
+        '<div class="mstat"><span>착해진 도깨비 <b>' + pub.caught.length + ' / ' + S.cfg.G + '</b></span><span>마을 등불 ' + lampIcons(pub.wrong, pub.limit) + '</span></div>' +
         // 수근수근: 돋보기 소문(누가 봤는지는 안 나옴). "아니래"는 늘 참, "도깨비래"는 가짜 돋보기일 수도
         ((pub.rumors || []).length
           ? '<div class="mrum"><b>수근수근</b>' + QP.groupRumors(pub.rumors).map((x) => '<span class="' + (x.g ? 'y' : 'n') + (x.r === S.round ? ' new' : '') + '">' + nick(x.sid) + j(x.sid, '은', '는') + ' ' + (x.g ? '도깨비래' : '아니래') + (x.n > 1 ? ' ×' + x.n : '') + '</span>').join('') + '</div>'
           : '<div class="mrum none">돋보기 소문이 여기 떠요 · 누가 봤는지는 몰라요</div>') +
         (pub.hints.length ? '<div class="hints">' + pub.hints.map((hh, i) => '<div class="hint' + (i === pub.hints.length - 1 ? ' last' : '') + '"><b>힌트 ' + (i + 1) + '</b> 이 중에 도깨비가 있어요 ' + hh.map((sid) => '<span>' + nick(sid) + '</span>').join('') + '</div>').reverse().join('') + '</div>' : '<div class="hints none">반 전체 정답이 ' + pub.H + '개 모이면 힌트가 나와요</div>');
       document.getElementById('mpanel').innerHTML = h;
+      // 화면 아래 가운데: 마을 등불(크게). 「등불이 꺼졌어요」 연출 뒤에 줄어든다
+      const lh = document.getElementById('lamphud');
+      if (lh) lh.innerHTML = '<b>마을 등불</b>' + lampIcons(Math.min(lampSeen < 0 ? pub.wrong : lampShown, pub.limit), pub.limit);
       const nk = document.getElementById('nk');
       if (S.phase === 'vote' && pub.nom) {
         const nv = m.voters.filter((sid) => (ref.bySid(sid) || {}).vote).length;
@@ -701,7 +738,7 @@
     T.setTop(m.goblins.map((sid) => ref.bySid(sid)).filter(Boolean).map((s) => ({ sid: s.sid, avatar: s.av, nick: s.nick, gold: 0, tag: m.caught.includes(s.sid) ? '착해진 도깨비' : '숨은 도깨비' })));
     const nick = (sid) => esc((ref.bySid(sid) || {}).nick || '?');
     $ui.innerHTML =
-      '<div class="newking big">' + (m.winner === 'village' ? '마을 승! 마을에 도깨비가 없어졌어요' : '도깨비 승!') + '</div>' +
+      '<div class="newking big">' + (m.winner === 'village' ? '마을 승! 마을에 도깨비가 없어졌어요' : m.wrong >= S.cfg.limit ? '도깨비 승! 마을 등불이 모두 꺼졌어요' : '도깨비 승! 도깨비가 끝까지 숨었어요') + '</div>' +
       '<div class="ranks mlog"><h3>지목 다시 보기</h3><ol>' +
       (m.log.length ? m.log.map((l) => '<li><span class="n">' + l.r + '</span><span class="nm">' + nick(l.by) + ' → ' + nick(l.target) + '</span><span class="g">' + (l.pass ? (l.goblin ? '도깨비! → 착해짐' : '착한 친구') : '부결') + '</span></li>').join('') : '<li>지목이 없었어요</li>') +
       '</ol><p class="mg">도깨비: ' + m.goblins.map(nick).join(', ') + '</p></div>' +

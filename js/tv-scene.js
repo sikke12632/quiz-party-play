@@ -246,6 +246,43 @@
       floaters.push(m);
     }
 
+    // 도깨비 찾기: 착한 친구를 잘못 콩하면 마을이 한 단계씩 어두워진다(등불 아이콘은 teacher-ui 의 화면 아래 칸, 2026-11-05 담임)
+    const lamps = [];
+    let darkNow = 0,
+      darkGoal = 0;
+    // n: 꺼진 등불 수, total: 등불 수(잘못 지목 한도). anim 이면 마지막 등불이 깜빡이다 꺼진다
+    S.setLamps = function (n, total, anim) {
+      total = total || 3;
+      lamps.forEach((l, i) => {
+        l.visible = i < total;
+        const off = i < n;
+        if (off && l.userData.on) {
+          l.userData.on = false;
+          l.userData.flick = anim ? now : 0;
+        } else if (!off) (l.userData.on = true), (l.userData.flick = 0);
+      });
+      darkGoal = total ? n / total : 0;
+      if (!anim) darkNow = darkGoal;
+    };
+    S.hideLamps = () => (lamps.forEach((l) => (l.visible = false)), (darkGoal = darkNow = 0));
+    function lampTick(dt) {
+      for (const l of lamps) {
+        const u = l.userData;
+        let lit = u.on ? 1 : 0;
+        if (!u.on && u.flick) {
+          const t = now - u.flick;
+          lit = t < 1.2 ? (Math.sin(t * 40) > 0 ? 1 : 0.15) : 0; // 깜빡깜빡 → 꺼짐
+        }
+        u.bulb.material.color.set(lit ? '#ffd36a' : '#4a4038');
+        u.glow.visible = !!lit;
+      }
+      darkNow += (darkGoal - darkNow) * Math.min(1, dt * 1.5);
+      // 마을이 어두워진다: 빛을 줄이고 화면도 어둡게(하늘까지)
+      // 등불 하나 꺼질 때마다 눈에 띄게 한 단계씩(밝기 1 → .68 → .48 → .32)
+      const b = 1 - 0.68 * Math.pow(darkNow, 0.6);
+      const f = darkNow > 0.01 ? 'brightness(' + b.toFixed(3) + ') saturate(' + (1 - 0.45 * darkNow).toFixed(3) + ') contrast(' + (1 + 0.1 * darkNow).toFixed(3) + ')' : '';
+      if (canvas.style.filter !== f) canvas.style.filter = f;
+    }
     const labels = [];
     const dolls = [];
     S.addKid = function (kid, instant) {
@@ -712,8 +749,9 @@
       popTick();
       const k = 1 - Math.exp(-dt * 3);
       stage.dim += (stage.dimGoal - stage.dim) * k;
-      hemi.intensity = 1.1 * (1 - 0.45 * stage.dim);
-      sun.intensity = 2.4 * (1 - 0.6 * stage.dim);
+      hemi.intensity = 1.1 * (1 - 0.45 * stage.dim) * (1 - 0.35 * darkNow);
+      sun.intensity = 2.4 * (1 - 0.6 * stage.dim) * (1 - 0.45 * darkNow);
+      lampTick(dt);
       // 연출 중에는 앞에 나온 인형 이름표만
       for (const m of dolls) if (m.userData.L) m.userData.L.hide = stage.dimGoal > 0 && !m.userData.act;
       const target = stage.spotSid && bySid(stage.spotSid);
@@ -758,6 +796,7 @@
     scene.add(sun.target);
     S.setView = function (v) {
       if (v !== S.view) S.stageReset();
+      if (v === 'game') S.hideLamps();
       S.view = K.view = v;
       const c = v === 'game' ? JK.Podium.STAGE : new T.Vector3();
       sun.target.position.copy(c);

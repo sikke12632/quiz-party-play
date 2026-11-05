@@ -131,10 +131,11 @@
     const k = (x) => (C.mine(x) ? 1 : 0);
     const res = C.myRes();
     const p = mp();
-    return [ph, r, res ? (res.ok ? 'ok' : 'no') : '', S.a === r ? 'a' : '', k('magR'), S.mg === r ? 'mg' : '', ph === 'result' && !mBoard && picking() ? '' : (p.rumors || []).length, k('magRes'), k('nomR'), C.rollLeft() > 0 ? 'roll' : '', S.tg === r ? 'tg' : '', k('voteR'), S.v === r ? 'v' + S.vy : '', p.caught.length, p.good.length, p.hints.length, mBoard, mRole, (C.game.dolls || []).length, C.seat && C.seat.fin ? 'f' : '', C.seat && C.seat.role ? 'R' + (C.seat.role.g ? 'g' : '') + (C.seat.role.was ? 'w' : '') : ''].join('|');
+    return [ph, r, res ? (res.ok ? 'ok' : 'no') : '', S.a === r ? 'a' : '', k('magR'), S.mg === r ? 'mg' : '', ph === 'result' && !mBoard && picking() ? '' : (p.rumors || []).length, k('magRes'), k('nomR'), C.rollLeft() > 0 ? 'roll' : '', S.tg === r ? 'tg' : '', k('voteR'), S.v === r ? 'v' + S.vy : '', p.caught.length, p.good.length, p.wrong || 0, p.hints.length, mBoard, mRole, (C.game.dolls || []).length, C.seat && C.seat.fin ? 'f' : '', C.seat && C.seat.role ? 'R' + (C.seat.role.g ? 'g' : '') + (C.seat.role.was ? 'w' : '') : ''].join('|');
   }
   function mTopbar() {
     const s = C.seat || {};
+    const p0 = mp();
     const ph = C.phase;
     const t = Math.ceil(C.timeLeft());
     const label = { question: '문제', result: '결과', vote: '투표', show: '공개' }[ph];
@@ -143,6 +144,7 @@
       '<div class="topbar"><div class="me"><img src="' + myPortrait() + '" alt=""><span><small>나는</small> <b>' + esc(s.nick) + '</b></span></div>' +
       (started && s.role ? '<button class="mbtn" data-act="role">내 역할</button>' : '') +
       (started ? '<button class="mbtn" data-act="board">내 추리판</button>' : '') +
+      (started && p0.limit ? '<span class="lamps" title="마을 등불">' + Array.from({ length: p0.limit }, (_, k) => '<i class="lp ' + (k < p0.limit - (p0.wrong || 0) ? 'on' : 'off') + '"></i>').join('') + '</span>' : '') +
       '<div class="spacer"></div>' +
       (C.round ? '<div class="rd">' + C.round + ' / ' + (C.game.cfg.Q || 12) + '번째</div>' : '') +
       (label ? '<div class="timer"><span>' + label + '</span> <b id="tN">' + t + '</b>초 <span class="bar"><i id="tB" style="width:' + Math.round((100 * C.timeLeft()) / phaseTotal()) + '%"></i></span></div>' : '') +
@@ -252,7 +254,8 @@
       if (!l) return '<div class="center card"><h2>이번엔 지목이 없었어요</h2></div>';
       const tgt = C.game.dolls.find((d) => d.sid === l.target) || {};
       const msg = !l.pass ? '찬성이 절반을 못 넘어서 그대로 넘어가요' : l.goblin ? '도깨비였어요! 이제 착한 시민이 됐어요' : '착한 ' + tgt.nick + QP.josa(tgt.nick, '이었어요', '였어요') + '! 풀려났어요';
-      return '<div class="center mshow' + (l.pass ? (l.goblin ? ' caught' : ' good') : ' pass0') + '"><img class="bigdoll" src="' + dp(tgt.av) + '"><h1 class="t">' + esc(msg) + '</h1>' + QP.voteBar(l.yes, l.no, l.n) + '</div>';
+      const lampNote = l.pass && !l.goblin ? '<p class="lampnote">마을 등불이 하나 꺼졌어요 (남은 등불 ' + Math.max(0, (p.limit || 3) - (p.wrong || 0)) + '개)</p>' : '';
+      return '<div class="center mshow' + (l.pass ? (l.goblin ? ' caught' : ' good') : ' pass0') + '"><img class="bigdoll" src="' + dp(tgt.av) + '"><h1 class="t">' + esc(msg) + '</h1>' + lampNote + QP.voteBar(l.yes, l.no, l.n) + '</div>';
     }
     if (ph === 'end') {
       const f = s.fin || {};
@@ -275,6 +278,9 @@
       clearTimeout(roleT);
       roleT = setTimeout(() => ((mRole = false), (key = ''), render()), 5000);
     }
+    // 도깨비 찾기: 등불이 꺼질수록 화면 배경이 어두워진다
+    const dk = C && C.mafia && C.game && C.game.mp ? String(Math.min(3, C.game.mp.wrong || 0)) : '';
+    if (document.body.dataset.dark !== dk) document.body.dataset.dark = dk;
     const k = viewKey();
     if (k === key) return tickOnly();
     const prevKey = key;
