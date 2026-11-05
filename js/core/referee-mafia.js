@@ -164,9 +164,12 @@
         if (s.magR && !s.mag && d.mg && d.mg.r === r && this.dollOk(d.mg.sid, s)) {
           const t = this.bySid(d.mg.sid);
           s.mag = { r, sid: t.sid, g: s.magR.fake ? true : this.isGob(t) };
-          m.rumors.push({ r, sid: t.sid, g: s.mag.g });
           this.net.update(this.path('players/' + num), { magRes: s.mag });
-          this.net.update(this.path(), { mp: this.pub() });
+          // TV 소문판에는 "도깨비래"만 올린다(2026-11-05 담임: 너무 많이 뜬다). "아니래"는 쓴 아이 화면에만
+          if (s.mag.g) {
+            m.rumors.push({ r, sid: t.sid, g: true });
+            this.net.update(this.path(), { mp: this.pub() });
+          }
           this.save();
         }
         if (m.nominator === s.sid && !m.nom && d.tg && d.tg.r === r) {

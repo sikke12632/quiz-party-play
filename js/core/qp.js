@@ -70,6 +70,13 @@
     }
     return [...by.values()].sort((a, b) => b.r - a.r || b.i - a.i);
   };
+  // 도깨비 찾기 투표 막대: 찬성이 절반을 넘어야 공개(가운데 선 = 절반)
+  QP.voteBar = function (yes, no, n) {
+    n = Math.max(1, n);
+    const need = Math.floor(n / 2) + 1;
+    return '<div class="vbar"><i class="y" style="width:' + (100 * yes) / n + '%"></i><i class="no" style="width:' + (100 * no) / n + '%"></i><span class="half"></span><em class="hl">절반</em></div>' +
+      '<p class="vbarlab">찬성 <b>' + yes + '</b> · 반대 ' + no + (n - yes - no > 0 ? ' · 안 냄 ' + (n - yes - no) : '') + ' <small>(공개되려면 찬성 ' + need + '표)</small></p>';
+  };
   QP.ANS_MAX = 12;
   // 12글자가 넘는 보기는 '#' + 짧은 지문(해시)으로 보낸다. 앞부분이 같은 보기(예 「7/10 × 4/10 = 28/100」·「… = 28/10」)도 가린다
   QP.ansHash = function (t) {

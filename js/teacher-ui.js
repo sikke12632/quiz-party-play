@@ -239,6 +239,8 @@
   async function scSetup() {
     screen = 'setup';
     const pf = Object.assign({ minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true, mode: 'gold' }, prefs.get() || {});
+    // 예전에 저장한 돋보기 %는 버린다(2026-11-05 기본값 8→10%)
+    if (pf.mafia && pf.mafiaV !== 2) delete pf.mafia.mag;
     const mf = Object.assign({}, QP.MAFIA_CFG, pf.mafia || {});
     ITEMS = await buildItems();
     ONLY = pf.only === true; // 담임: OX·숫자 답도 괜찮다(서술형만 아니면) → 기본은 모두 낸다
@@ -452,7 +454,8 @@
       streakOn: f('streakOn')[0].checked,
       mode: (f('mode').find((x) => x.checked) || { value: 'gold' }).value,
     });
-    pf.mafia = { Q: num('mQ', 12), G: num('mG', 3), H: num('mH', 70), mag: num('mMag', 8) / 100, fake: num('mFake', 25) / 100, limit: num('mLimit', 3), tQ: num('mtQ', 20), tResult: num('mtR', 8), tVote: num('mtV', 10), tShow: num('mtS', 6) };
+    pf.mafiaV = 2;
+    pf.mafia = { Q: num('mQ', 12), G: num('mG', 3), H: num('mH', 70), mag: num('mMag', 10) / 100, fake: num('mFake', 25) / 100, limit: num('mLimit', 3), tQ: num('mtQ', 20), tResult: num('mtR', 8), tVote: num('mtV', 10), tShow: num('mtS', 6) };
     const err = document.getElementById('err');
     if (!items.length) return (err.textContent = '출제 범위를 하나 이상 골라요');
     prefs.set(pf);
@@ -627,6 +630,7 @@
     if (screen !== 'mafia') {
       screen = 'mafia';
       T.setView('lobby');
+      T.panelPx = 470; // 도깨비 찾기: 오른쪽 칸이 넓다(힌트·소문 크게)
       $ui.innerHTML =
         '<div class="roundbar"><span class="rd" id="rd"></span><span class="ph"><span id="phn"></span> <b id="pht"></b>초 <span class="bar"><i id="phb"></i></span></span><span class="left" id="ansn"></span></div>' +
         '<div class="newking" id="nk" hidden></div><div class="mpanel" id="mpanel"></div>';
@@ -644,7 +648,7 @@
     if (rumorSeen < 0) rumorSeen = rums.length;
     while (rumorSeen < rums.length) {
       const x = rums[rumorSeen++];
-      if (T.rumorPop) T.rumorPop(x.sid, x.g);
+      if (T.rumorPop && x.g) T.rumorPop(x.sid, x.g);
     }
     const rolling = S.phase === 'result' && m.rollEnd ? (ref.net.now() < m.rollEnd - QP.ms(0.75) ? 'R' : 'L') : '';
     const q = m.cur ? ref.qmap(m.cur.qid) : null;
@@ -663,7 +667,7 @@
         ((pub.rumors || []).length
           ? '<div class="mrum"><b>수근수근</b>' + QP.groupRumors(pub.rumors).map((x) => '<span class="' + (x.g ? 'y' : 'n') + (x.r === S.round ? ' new' : '') + '">' + nick(x.sid) + j(x.sid, '은', '는') + ' ' + (x.g ? '도깨비래' : '아니래') + (x.n > 1 ? ' ×' + x.n : '') + '</span>').join('') + '</div>'
           : '<div class="mrum none">돋보기 소문이 여기 떠요 · 누가 봤는지는 몰라요</div>') +
-        (pub.hints.length ? '<div class="hints">' + pub.hints.map((hh, i) => '<div class="hint' + (i === pub.hints.length - 1 ? ' last' : '') + '"><b>힌트 ' + (i + 1) + '</b> 이 중에 도깨비가 있어요: ' + hh.map((sid) => '<span>' + nick(sid) + '</span>').join('') + '</div>').join('') + '</div>' : '<div class="hints none">반 전체 정답이 ' + pub.H + '개 모이면 힌트가 나와요</div>');
+        (pub.hints.length ? '<div class="hints">' + pub.hints.map((hh, i) => '<div class="hint' + (i === pub.hints.length - 1 ? ' last' : '') + '"><b>힌트 ' + (i + 1) + '</b> 이 중에 도깨비가 있어요 ' + hh.map((sid) => '<span>' + nick(sid) + '</span>').join('') + '</div>').reverse().join('') + '</div>' : '<div class="hints none">반 전체 정답이 ' + pub.H + '개 모이면 힌트가 나와요</div>');
       document.getElementById('mpanel').innerHTML = h;
       const nk = document.getElementById('nk');
       if (S.phase === 'vote' && pub.nom) {
@@ -672,7 +676,8 @@
         nk.hidden = false;
       } else if (S.phase === 'show' && pub.last) {
         const l = pub.last;
-        nk.innerHTML = l.pass ? (l.goblin ? nick(l.target) + j(l.target, '은', '는') + ' <b>도깨비</b>였어요! 이제 착한 시민!' : '착한 <b>' + nick(l.target) + '</b>' + j(l.target, '이었어요', '였어요') + '! 풀려났어요') + ' <small>찬성 ' + l.yes + ' · 반대 ' + l.no + '</small>' : '찬성이 절반을 넘지 못했어요 <small>찬성 ' + l.yes + ' / ' + l.n + '명</small>';
+        // 찬성이 모자라면 왜 넘어가는지 막대로 보여 준다(2026-11-05 담임: 아이들이 "왜 넘어가요?")
+        nk.innerHTML = (l.pass ? (l.goblin ? nick(l.target) + j(l.target, '은', '는') + ' <b>도깨비</b>였어요! 이제 착한 시민!' : '착한 <b>' + nick(l.target) + '</b>' + j(l.target, '이었어요', '였어요') + '! 풀려났어요') : '찬성이 <b>절반을 못 넘어서</b> 그대로 넘어가요') + QP.voteBar(l.yes, l.no, l.n);
         nk.hidden = false;
       } else if (S.phase === 'result' && m.nominator && !pub.nom) {
         nk.innerHTML = rolling === 'R' ? '지목권 뽑기! <small>빨리 맞힌 친구 ' + m.cand.length + '명 중에서 한 명</small>' : '<b>' + nick(m.nominator) + '</b>' + j(m.nominator, '이', '가') + ' 지목권을 받았어요! <small>도깨비 같은 친구를 골라요</small>';

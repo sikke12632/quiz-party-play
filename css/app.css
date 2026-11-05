@@ -538,14 +538,14 @@ body.tv.no3d .ranks:not(.mlog) h3 { font-size: 28px; }
 .rumors span.n { background: #dcefd9; color: #2c6d36; }
 .emptybox small { display: block; font-family: var(--qfont); font-size: 17px; color: var(--brown); margin-top: 4px; }
 .magres > small:first-child { font-size: 15px; }
-/* TV: 수근수근 소문판·말풍선 */
-.mrum { background: var(--cream); border-radius: 16px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 15px; box-shadow: 0 2px 8px rgba(60,40,20,.12); max-height: 30vh; overflow: hidden; }
-.mrum b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 18px; margin-right: 4px; }
-.mrum span { padding: 2px 10px; border-radius: 999px; background: #fbe3dc; color: #8f3022; }
+/* TV: 수근수근 소문판·말풍선 (2026-11-05 담임: 너무 작아서 안 보임 → 크게) */
+.mrum { background: var(--cream); border-radius: 16px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 22px; font-weight: bold; box-shadow: 0 2px 8px rgba(60,40,20,.12); max-height: 44vh; overflow: hidden; }
+.mrum b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 28px; margin-right: 4px; width: 100%; }
+.mrum span { padding: 4px 14px; border-radius: 999px; background: #fbe3dc; color: #8f3022; }
 .mrum span.n { background: #dcefd9; color: #2c6d36; }
-.mrum span.new { box-shadow: 0 0 0 2px var(--gold); font-weight: bold; }
-.mrum.none { color: var(--brown); font-size: 14px; }
-.pop3d.rum { font-size: 30px; -webkit-text-stroke: 0; color: #fff; padding: 4px 14px; border-radius: 18px; text-shadow: none; animation: popin .25s ease-out; }
+.mrum span.new { box-shadow: 0 0 0 3px var(--gold); }
+.mrum.none { color: var(--brown); font-size: 16px; font-weight: normal; }
+.pop3d.rum { font-size: 44px; -webkit-text-stroke: 0; color: #fff; padding: 6px 18px; border-radius: 22px; text-shadow: none; animation: popin .25s ease-out; }
 .pop3d.rum.y { background: #c4553f; } .pop3d.rum.n { background: #2f8f5a; }
 
 /* ---------- 황금 찾기 시상식(2026-11-04): 1등부터 큰 카드 + 꽃가루, 번호 공개 ---------- */
@@ -574,3 +574,30 @@ body.tv.no3d .ranks:not(.mlog) h3 { font-size: 28px; }
 #award .ahall .acard { animation: aIn .4s ease-out; }
 .conf { position: absolute; top: 55%; width: 12px; height: 18px; border-radius: 3px; animation: conf 2.4s cubic-bezier(.15,.7,.4,1) forwards; }
 @keyframes conf { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 60% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 700px)) rotate(var(--r)); opacity: 0; } }
+
+/* 2026-11-05 담임: 힌트·수근수근이 TV에서 너무 작다 → 칸을 넓히고 글을 크게, 최근 힌트가 위 */
+body.tv .mpanel { width: 450px; }
+.hint { font-size: 19px; padding: 8px 0; }
+.hint b { font-size: 22px; }
+.hint span { font-size: 21px; padding: 3px 12px; margin: 4px 5px 0 0; }
+.hint.last { font-size: 21px; }
+.hint.last span { font-size: 24px; font-weight: bold; }
+.hint:not(.last) { opacity: .75; }
+.mrum { max-height: 38vh; }
+/* 아이 화면: 힌트·소문 띠(결과·투표·공개 때 아래쪽) */
+.clues { position: fixed; left: 10px; right: 10px; bottom: 10px; max-height: 32vh; overflow: hidden; background: rgba(251,244,228,.95); border-radius: 16px; padding: 8px 12px; box-shadow: 0 4px 14px rgba(60,40,20,.18); font-size: 17px; display: flex; flex-direction: column; gap: 6px; }
+.clues .ch { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.clues .ch > b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 19px; margin-right: 2px; }
+.clues .ch span { padding: 2px 10px; border-radius: 999px; font-weight: bold; }
+.clues .hint1 span { background: var(--gold); color: #5a3a08; }
+.clues .rum span { background: #fbe3dc; color: #8f3022; } .clues .rum span.n { background: #dcefd9; color: #2c6d36; }
+.rumors span.h { background: #fff3c4; color: #5a3a08; }
+
+/* 투표 막대: 찬성(빨강)·반대(파랑)·안 냄(회색), 가운데 절반 선 */
+.vbar { position: relative; height: 26px; border-radius: 13px; background: #e8dcc6; overflow: hidden; display: flex; margin: 10px auto 4px; max-width: 560px; box-shadow: inset 0 2px 4px rgba(60,40,20,.15); }
+.vbar i { display: block; height: 100%; } .vbar i.y { background: #e0574a; } .vbar i.no { background: #3d82c4; margin-left: auto; }
+.vbar .half { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #2a211b; }
+.vbar .hl { position: absolute; left: 50%; top: 4px; transform: translateX(6px); font-style: normal; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: 6px; color: #fff; background: #2a211b; }
+.vbarlab { margin: 2px 0 0; font-size: 18px; text-align: center; } .vbarlab small { font-size: 14px; color: var(--brown); }
+.newking .vbar { width: 520px; } .newking .vbarlab { font-size: 18px; }
+.mshow.pass0 h1 { color: #6b4a2a; }

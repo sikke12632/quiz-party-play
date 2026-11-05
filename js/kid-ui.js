@@ -105,6 +105,25 @@
     const d = (C.game.dolls || []).find((x) => x.sid === sid);
     return d ? d.nick : '?';
   };
+  // 돋보기·지목 인형을 고르는 중인가(그동안은 소문이 와도 화면을 다시 그리지 않는다)
+  function picking() {
+    const r = C.round,
+      S = C.sent;
+    return C.phase === 'result' && ((C.mine('magR') && S.mg !== r) || (C.mine('nomR') && S.tg !== r && C.rollLeft() <= 0));
+  }
+  // 힌트·소문 띠(아이 화면 아래): 마지막 힌트 + 최근 소문
+  function cluesHTML() {
+    const p = mp();
+    const last = p.hints[p.hints.length - 1];
+    const R = QP.groupRumors(p.rumors).slice(0, 10);
+    if (!last && !R.length) return '';
+    return (
+      '<div class="clues">' +
+      (last ? '<div class="ch hint1"><b>힌트 ' + p.hints.length + '</b> 이 중에 도깨비가 있어요 ' + last.map((sid) => '<span>' + esc(nickOf(sid)) + '</span>').join('') + '</div>' : '') +
+      (R.length ? '<div class="ch rum"><b>수근수근</b>' + R.map((x) => '<span class="' + (x.g ? 'y' : 'n') + '">' + esc(nickOf(x.sid)) + QP.josa(nickOf(x.sid), '은', '는') + ' ' + (x.g ? '도깨비래' : '아니래') + (x.n > 1 ? ' ×' + x.n : '') + '</span>').join('') + '</div>' : '') +
+      '</div>'
+    );
+  }
   function mafiaKey() {
     const r = C.round,
       ph = C.phase,
@@ -112,7 +131,7 @@
     const k = (x) => (C.mine(x) ? 1 : 0);
     const res = C.myRes();
     const p = mp();
-    return [ph, r, res ? (res.ok ? 'ok' : 'no') : '', S.a === r ? 'a' : '', k('magR'), S.mg === r ? 'mg' : '', ph === 'result' && !mBoard ? '' : (p.rumors || []).length, k('magRes'), k('nomR'), C.rollLeft() > 0 ? 'roll' : '', S.tg === r ? 'tg' : '', k('voteR'), S.v === r ? 'v' + S.vy : '', p.caught.length, p.good.length, p.hints.length, mBoard, mRole, (C.game.dolls || []).length, C.seat && C.seat.fin ? 'f' : '', C.seat && C.seat.role ? 'R' + (C.seat.role.g ? 'g' : '') + (C.seat.role.was ? 'w' : '') : ''].join('|');
+    return [ph, r, res ? (res.ok ? 'ok' : 'no') : '', S.a === r ? 'a' : '', k('magR'), S.mg === r ? 'mg' : '', ph === 'result' && !mBoard && picking() ? '' : (p.rumors || []).length, k('magRes'), k('nomR'), C.rollLeft() > 0 ? 'roll' : '', S.tg === r ? 'tg' : '', k('voteR'), S.v === r ? 'v' + S.vy : '', p.caught.length, p.good.length, p.hints.length, mBoard, mRole, (C.game.dolls || []).length, C.seat && C.seat.fin ? 'f' : '', C.seat && C.seat.role ? 'R' + (C.seat.role.g ? 'g' : '') + (C.seat.role.was ? 'w' : '') : ''].join('|');
   }
   function mTopbar() {
     const s = C.seat || {};
@@ -170,9 +189,14 @@
     );
   }
   function boardHTML() {
-    return '<div class="mboard"><div class="mbh"><b>내 추리판</b> <small>눌러서 ✕ 표시 · 이 기기에만 저장돼요 · 노란 테두리 = 마지막 힌트</small><button class="mbtn" data-act="board">닫기</button></div>' + grid(false, 'mark') + rumorList() + '</div>';
+    return '<div class="mboard"><div class="mbh"><b>내 추리판</b> <small>눌러서 ✕ 표시 · 이 기기에만 저장돼요 · 노란 테두리 = 마지막 힌트</small><button class="mbtn" data-act="board">닫기</button></div>' + grid(false, 'mark') + hintList() + rumorList() + '</div>';
   }
   // 수근수근 소문(돋보기 결과). "아니래"는 늘 참, "도깨비래"는 가짜일 수도
+  function hintList() {
+    const H = mp().hints || [];
+    if (!H.length) return '';
+    return '<div class="rumors hl"><b>힌트</b>' + H.map((h, i) => '<span class="h">' + (i + 1) + ': ' + h.map((sid) => esc(nickOf(sid))).join(', ') + '</span>').reverse().join('') + '</div>';
+  }
   function rumorList() {
     const R = QP.groupRumors(mp().rumors);
     if (!R.length) return '';
@@ -200,11 +224,11 @@
         );
       // 돋보기(진짜·가짜 똑같이 보임): 고르면 결과가 TV 소문으로 뜬다
       const hasMag = C.mine('magR');
-      if (hasMag && S.mg !== r) return '<div class="pickhead"><span class="kind mag">돋보기!</span> 누구를 볼까요? <small>결과는 TV에 떠요 · 누가 봤는지는 안 나와요</small></div>' + grid(true, 'mg', { small: true });
+      if (hasMag && S.mg !== r) return '<div class="pickhead"><span class="kind mag">돋보기!</span> 누구를 볼까요? <small>도깨비면 TV 수근수근에 떠요 · 누가 봤는지는 안 나와요</small></div>' + grid(true, 'mg', { small: true });
       const mr = C.mine('magRes');
       let top = hasMag
         ? mr
-          ? '<div class="magres' + (mr.g ? ' g' : '') + '"><small>TV에 떴어요</small><img src="' + dp((C.game.dolls.find((d) => d.sid === mr.sid) || {}).av) + '"><b>' + esc(nickOf(mr.sid)) + '</b>' + QP.josa(nickOf(mr.sid), '은', '는') + ' ' + (mr.g ? '<em>도깨비래요!</em>' : '도깨비가 <em>아니래요</em>') + '</div>'
+          ? '<div class="magres' + (mr.g ? ' g' : '') + '"><small>' + (mr.g ? 'TV 수근수근에 떴어요' : '나만 봐요') + '</small><img src="' + dp((C.game.dolls.find((d) => d.sid === mr.sid) || {}).av) + '"><b>' + esc(nickOf(mr.sid)) + '</b>' + QP.josa(nickOf(mr.sid), '은', '는') + ' ' + (mr.g ? '<em>도깨비래요!</em>' : '도깨비가 <em>아니에요</em>') + '</div>'
           : '<div class="center"><div class="spin"></div></div>'
         : '<div class="emptybox">맞았어요! <small>TV 소문을 봐요</small></div>';
       if (C.rollLeft() > 0) top += '<p class="rollnote">두근두근… 누가 지목권을 받을까요? <b>TV를 봐요!</b></p>';
@@ -227,8 +251,8 @@
       const l = p.last;
       if (!l) return '<div class="center card"><h2>이번엔 지목이 없었어요</h2></div>';
       const tgt = C.game.dolls.find((d) => d.sid === l.target) || {};
-      const msg = !l.pass ? '찬성이 절반을 넘지 못했어요' : l.goblin ? '도깨비였어요! 이제 착한 시민이 됐어요' : '착한 ' + tgt.nick + QP.josa(tgt.nick, '이었어요', '였어요') + '! 풀려났어요';
-      return '<div class="center mshow' + (l.pass ? (l.goblin ? ' caught' : ' good') : '') + '"><img class="bigdoll" src="' + dp(tgt.av) + '"><h1 class="t">' + esc(msg) + '</h1><p>찬성 ' + l.yes + ' · 반대 ' + l.no + ' (투표권 ' + l.n + '명)</p></div>';
+      const msg = !l.pass ? '찬성이 절반을 못 넘어서 그대로 넘어가요' : l.goblin ? '도깨비였어요! 이제 착한 시민이 됐어요' : '착한 ' + tgt.nick + QP.josa(tgt.nick, '이었어요', '였어요') + '! 풀려났어요';
+      return '<div class="center mshow' + (l.pass ? (l.goblin ? ' caught' : ' good') : ' pass0') + '"><img class="bigdoll" src="' + dp(tgt.av) + '"><h1 class="t">' + esc(msg) + '</h1>' + QP.voteBar(l.yes, l.no, l.n) + '</div>';
     }
     if (ph === 'end') {
       const f = s.fin || {};
@@ -265,7 +289,7 @@
     else if (C.screen === 'otherTab') h = '<div class="center card"><h2>다른 탭에서 하고 있어요</h2><p>이 탭에서 계속하려면 눌러요.</p><div class="row"><button class="go" data-act="claim">여기서 할래요</button></div></div>';
     else if (C.screen === 'otherDevice') h = '<div class="center card"><h2>다른 기기에서 이어서 하고 있어요</h2><p>이 기기는 쉬어도 돼요.</p></div>';
     else if (C.screen === 'gone') h = '<div class="center card"><h2>판이 없어졌어요</h2><div class="row"><button class="go" data-act="restart">처음으로</button></div></div>';
-    else if (C.mafia) h = mTopbar() + scMafia() + (mBoard ? boardHTML() : '') + (mRole ? roleHTML() : '');
+    else if (C.mafia) h = mTopbar() + ((b) => b + (!mBoard && !/dgrid/.test(b) && ['result', 'vote', 'show'].includes(C.phase) ? cluesHTML() : ''))(scMafia()) + (mBoard ? boardHTML() : '') + (mRole ? roleHTML() : '');
     else h = topbar() + scGame();
     // 내용이 같으면 다시 그리지 않는다(다시 그리는 순간 누른 손가락이 사라지지 않게)
     if (h !== lastHTML || !$app.firstChild) $app.innerHTML = lastHTML = h;
