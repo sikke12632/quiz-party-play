@@ -49,6 +49,14 @@
       const list = await this.net.find('qp_games', 'code', String(code));
       const g = list.filter((d) => d.data.phase !== 'end').sort((a, b) => (b.data.at || 0) - (a.data.at || 0))[0];
       if (!g) {
+        // 실시간 시험방 번호면 시험방으로 보낸다(퀴즈 홈에서 번호를 넣어도 들어가게, 2026-11-05)
+        try {
+          const nt = (await this.net.find('qp_nettest', 'code', String(code))).filter((d) => d.data.phase !== 'end');
+          if (nt.length && typeof location !== 'undefined') {
+            location.href = location.href.replace(/[^/]*([?#].*)?$/, '') + 'nettest.html?c=' + code + (QP.isMock ? '&mock' : '');
+            return false;
+          }
+        } catch (e) {}
         this.err = '그 번호의 판이 없어요. 번호를 다시 봐요.';
         this.emit();
         return false;
