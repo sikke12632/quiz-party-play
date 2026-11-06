@@ -4,7 +4,7 @@
  *
  * 판 문서 tt·roster: 보물 지키기와 같음(tt.teams[].tot = 팀 점수 합)
  * 판 문서 live: 미니게임 중 { mg, seed, t0, dur, boss:보스 번호, kind, avg:평균 인원, lv:{sid:단계}, hp:{sid:목숨}, hit:{sid:맞은 횟수}, pos:{sid:[x,y]}, d:{sid:데미지}, dn:{sid:1}, dmg:{팀:데미지 합} }
- * cfg.kind: 'atk' 공격력 강화(맞힌 수 → 무기 단계, 목숨 1) / 'def' 방어력 강화(무기 모두 같음, 맞힌 수 → 목숨)
+ * cfg.kind: 'pick' 아이마다 모이는 곳에서 고름(자리 st, live.st{sid:'a'|'d'}) / 'atk' 모두 공격형(맞힌 수 → 무기 단계, 목숨 1) / 'def' 모두 수비형(무기 모두 같음, 맞힌 수 → 목숨)
  * 자리 문서(그 아이만): team, cl, res{…, blk, left}, dres{mg, d:팀 점수, raw, my, down, rank, n, boss}, fin{rank, tot, my, nOk, nAns, n}
  * 아이가 쓰는 칸: a{r,v} 답, b{r:미니게임 번호, x, y, d:내 데미지, k:격추 0/1, h:맞은 횟수(없어도 됨)}
  */
@@ -19,7 +19,7 @@
     }
     pubCfg() {
       const c = this.S.cfg;
-      return { mode: 'boss', kind: c.kind === 'def' ? 'def' : 'atk', per: c.per, M: c.M, teams: c.teams, tQ: c.tQ, tReveal: c.tReveal, tIntro: c.tIntro, tDefend: c.tDefend, tResult: c.tResult };
+      return { mode: 'boss', kind: ['atk', 'def'].includes(c.kind) ? c.kind : 'pick', per: c.per, M: c.M, teams: c.teams, tQ: c.tQ, tReveal: c.tReveal, tIntro: c.tIntro, tDefend: c.tDefend, tResult: c.tResult };
     }
     afterCreate() {
       super.afterCreate();
@@ -28,6 +28,17 @@
       while (list.length < Math.max(1, this.S.cfg.M | 0)) list.push(...this.r.shuffle([...QP.BOSS_NAMES.keys()]));
       this.S.t.bosses = list.slice(0, Math.max(1, this.S.cfg.M | 0));
       this.S.t.my = {}; // sid → 판 전체 내 데미지
+    }
+    // 이 아이의 형: 'atk' 공격형 | 'def' 수비형
+    styleOf(s) {
+      const k = this.S.cfg.kind;
+      if (k === 'atk' || k === 'def') return k;
+      return s.style === 'def' ? 'def' : 'atk';
+    }
+    styleCount() {
+      const ss = this.seatList();
+      const d = ss.filter((s) => this.styleOf(s) === 'def').length;
+      return { atk: ss.length - d, def: d };
     }
     avgN() {
       return this.seatList().length / Math.max(1, this.nTeams());
@@ -48,6 +59,15 @@
       if (S.phase === 'question' && d.a && d.a.r === r && s.cur && s.cur.r === r && !s.ans) {
         s.ans = { v: d.a.v, secs: (this.net.now() - S.phaseAt) / QP.ms(1) };
         this.checkAllAnswered();
+      }
+      // 모이는 곳에서 고른 공격형·수비형 (b.r = -1). 시작하면 고정
+      if (S.phase === 'lobby' && d.b && d.b.r === -1 && S.cfg.kind !== 'atk' && S.cfg.kind !== 'def') {
+        const st = d.b.k ? 'def' : 'atk';
+        if (s.style !== st) {
+          s.style = st;
+          this.net.update(this.path('players/' + num), { st });
+          this.saveSoon();
+        }
       }
       const L = this.live;
       if (S.phase === 'defend' && L && d.b && d.b.r === S.t.mg && typeof d.b.x === 'number') {
@@ -74,13 +94,14 @@
       S.endsAt = t0 + QP.ms(c.tDefend);
       const seed = (S.seed + mg * 7919 + 29) >>> 0;
       const boss = T.bosses[mg % T.bosses.length];
-      const kind = c.kind === 'def' ? 'def' : 'atk';
-      const live = { mg, seed, t0, dur: c.tDefend, boss, kind, avg: Math.round(this.avgN() * 100) / 100, lv: {}, hp: {}, hit: {}, pos: {}, d: {}, dn: {}, dmg: {} };
+      const kind = ['atk', 'def'].includes(c.kind) ? c.kind : 'pick';
+      const live = { mg, seed, t0, dur: c.tDefend, boss, kind, st: {}, avg: Math.round(this.avgN() * 100) / 100, lv: {}, hp: {}, hit: {}, pos: {}, d: {}, dn: {}, dmg: {} };
       for (let t = 0; t < this.nTeams(); t++) {
         const kids = this.teamSeats(t);
         live.dmg[t] = 0;
         kids.forEach((s, k) => {
-          [s.lv, s.bhp] = QP.boKit(kind, s.blk);
+          [s.lv, s.bhp] = QP.boKit(this.styleOf(s), s.blk);
+          live.st[s.sid] = this.styleOf(s) === 'def' ? 'd' : 'a';
           s.bpos = QP.boHome(k, kids.length);
           s.bdmg = 0;
           s.bdown = 0;
@@ -158,7 +179,7 @@
       for (const s of this.seatList()) {
         const x = res.find((y) => y.t === s.team) || { d: 0, raw: 0, rank: 0 };
         T.my[s.sid] = (T.my[s.sid] || 0) + (s.bdmg || 0);
-        ops.push({ path: this.path('players/' + s.num), data: { dres: { mg: T.mg, d: x.d, raw: x.raw, my: s.bdmg || 0, down: s.bdown ? 1 : 0, hp: s.bhp || 1, hit: s.bhit || 0, rank: x.rank, n: res.length, boss, kind: c.kind === 'def' ? 'def' : 'atk' } }, merge: true });
+        ops.push({ path: this.path('players/' + s.num), data: { dres: { mg: T.mg, d: x.d, raw: x.raw, my: s.bdmg || 0, down: s.bdown ? 1 : 0, hp: s.bhp || 1, hit: s.bhit || 0, rank: x.rank, n: res.length, boss, kind: this.styleOf(s) } }, merge: true });
         s.blk = 0;
       }
       const over = T.mg >= c.M || S.endAfter;

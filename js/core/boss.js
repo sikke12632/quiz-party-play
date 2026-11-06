@@ -6,7 +6,8 @@
  *   보스 탄막은 씨앗으로 정해져 모든 기기가 똑같이 셈한다(조준탄만 그 기기의 내 비행기를 노린다).
  *   맞았는지·넣은 데미지는 아이 기기가 직접 센다(서버 위치는 1초 3번이라 선생님 화면이 판정하면 억울한 격추가 생김).
  *   아이 → 자리 문서 b{r:미니게임 번호, x, y, d:내 데미지, k:격추 0/1, h:맞은 횟수}. 선생님 화면은 팀별로 더해 live 로 내보낸다.
- *   두 버전(판 설정 kind): 공격력 강화(atk) = 맞힌 수만큼 무기 단계, 목숨 1 / 방어력 강화(def) = 무기 모두 같음(3단계), 맞힌 수만큼 목숨.
+ *   두 형: 공격형(atk) = 맞힌 수만큼 무기 단계, 목숨 1 / 수비형(def) = 무기 모두 같음(3단계), 맞힌 수만큼 목숨.
+ *     판 설정 kind: 'pick' 아이마다 고름(모이는 곳에서 b{r:-1, k:0 공격형/1 수비형} 를 씀, 시작하면 고정) · 'atk'·'def' 모두 같은 형.
  *     목숨이 남으면 맞아도 BO.INV초 깜빡이며 버티고, 목숨이 다 떨어지면 격추.
  *   팀 점수 = 팀 데미지 ÷ 팀 인원 × 평균 인원(인원이 달라도 공평).
  *   격추되면 그 미니게임은 구경, 다음 미니게임에 부활.
@@ -25,7 +26,7 @@
     tIntro: 3,
     tDefend: 25,
     tResult: 8,
-    kind: 'atk', // 'atk' 공격력 강화: 맞힌 수 → 무기 1~5단계, 목숨 1 · 'def' 방어력 강화: 무기는 모두 같고 맞힌 수 → 목숨(0개도 1)
+    kind: 'pick', // 'pick' 아이가 모이는 곳에서 공격형·수비형을 고름(안 고르면 공격형) · 'atk' 모두 공격형(맞힌 수 → 무기 1~5단계, 목숨 1) · 'def' 모두 수비형(무기는 모두 같고 맞힌 수 → 목숨, 0개도 1)
     minutes: 99, // (황금 찾기용 칸)
   };
   QP.BOSS_NAMES = ['먹구름 대왕', '먹물 문어 선장', '태엽 부엉이', '눈보라 눈사람 왕', '꼬마 불꽃 용'];
@@ -153,6 +154,11 @@
   // 가짜 아이(봇)용: 미니게임 동안 돌아다니며 어림 데미지를 쌓고 b 를 쓴다. 가끔 격추. (bot-runner.js · 시험)
   //   c = KidClient. 미니게임마다 한 번만 돈다. pDown = 격추될 확률
   QP.boBotFly = function (c, pDown) {
+    // 모이는 곳: 아이가 고르는 판이면 공격형·수비형 중 하나를 무작위로 고른다
+    if (c.phase === 'lobby' && c.seat && c.game.cfg && c.game.cfg.kind === 'pick' && !c._boPick) {
+      c._boPick = 1;
+      setTimeout(() => QP.boPick(c, Math.random() < 0.5 ? 'def' : 'atk'), QP.ms(0.3 + Math.random()));
+    }
     const L = c.game && c.game.live;
     if (c.phase !== 'defend' || !L || !c.seat || L.boss === undefined || c._boFly === L.mg) return;
     c._boFly = L.mg;
@@ -192,6 +198,19 @@
       }
       if (done) clearInterval(tm);
     }, QP.ms(0.1));
+  };
+  // 아이가 고른 형 보내기(모이는 곳에서만 받음): c = KidClient, st = 'atk' | 'def'
+  QP.boPick = function (c, st) {
+    if (c.phase !== 'lobby') return false;
+    c._boMine = st;
+    c.write({ b: { r: -1, x: 0, y: 0, d: 0, k: st === 'def' ? 1 : 0 } });
+    return true;
+  };
+  // 이 아이의 형: 판 설정이 'pick' 이면 자리 문서 st(심판이 받은 값) → 내가 막 누른 값 → 공격형
+  QP.boStyleOf = function (c) {
+    const k = c.game && c.game.cfg && c.game.cfg.kind;
+    if (k === 'atk' || k === 'def') return k;
+    return (c.seat && c.seat.st) || c._boMine || 'atk';
   };
   // 팀 점수: 인원으로 맞춤
   QP.boScore = (raw, n, avgN) => Math.round((raw / Math.max(1, n)) * Math.max(1, avgN));

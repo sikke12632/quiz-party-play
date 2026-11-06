@@ -34,6 +34,7 @@
 .bsdef .b-pips { display: flex; gap: 5px; margin: 2px 0 4px; } .bsdef .b-pips i { width: 22px; height: 16px; background: rgba(90,70,54,.15); border-radius: 2px; }
 .bsdef .b-pips i.b-on { background: linear-gradient(#fff6c8, #f2c14e 50%, #b8862a); box-shadow: 0 0 6px rgba(242,193,78,.8); }
 .bsdef .b-pips svg { width: 24px; height: 22px; }
+.bsdef .b-alive em.b-atk { color: #b8862a; }
 .bsdef .b-alive em { font-style: normal; margin-left: auto; color: #e8504a; font-family: 'QPTitle', serif; }
 .bsdef .b-weap .b-l2 { font-size: 14px; color: #5a4636; }
 .bsdef .b-wprev { width: 100%; height: 76px; image-rendering: pixelated; border: 2px solid #3a3060; margin: 3px 0 1px; box-sizing: border-box; display: block; }
@@ -66,6 +67,17 @@
 @media (max-width: 1000px) { .bsdef .b-side { width: 190px; } .bsdef .b-pad { transform: scale(.85); transform-origin: 50% 100%; } }
 .bsres .bsboss { height: 120px; image-rendering: pixelated; }
 .bsres .bsd { font-family: 'QPTitle', serif; font-size: 54px; color: #d9573f; line-height: 1.1; }
+.bspickq { font-family: 'QPTitle', serif; font-size: 24px; margin: 14px 0 6px; }
+.bspick { display: flex; gap: 14px; justify-content: center; }
+.bspb { width: 230px; padding: 12px 14px; border: 3px solid #c9b38a; border-radius: 14px; background: #fffaf0; color: #5a4636; display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: 0 4px 0 #c9b38a; cursor: pointer; font: inherit; }
+.bspb .ic { font-size: 34px; line-height: 1.1; }
+.bspb > b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 28px; color: #2a211b; }
+.bspb small { font-size: 14px; }
+.bspb small b { color: #d9573f; }
+.bspb.on.atk { border-color: #d9573f; background: #ffe8e0; box-shadow: 0 4px 0 #a33a28; }
+.bspb.on.def { border-color: #3f7fa8; background: #e4f1fa; box-shadow: 0 4px 0 #2a5a7c; }
+.bspb.on > b::after { content: ' ✓'; }
+.bspicknote { font-size: 14px; color: #8a7666; margin-top: 8px; }
 .bshp svg { width: 26px; height: 24px; vertical-align: middle; }
 .bsres .bsd small { font-size: 22px; color: #5a4636; }
 `;
@@ -227,7 +239,7 @@
       simT = 0;
       me = QP.boHome(myK, mates.length);
       lv = L.lv[C.seat.sid] || 1;
-      kind = L.kind === 'def' ? 'def' : 'atk';
+      kind = L.st && L.st[C.seat.sid] ? (L.st[C.seat.sid] === 'd' ? 'def' : 'atk') : L.kind === 'def' ? 'def' : 'atk';
       hp = (L.hp && L.hp[C.seat.sid]) || 1;
       hits = Math.min(hp, (L.hit && L.hit[C.seat.sid]) || 0); // 새로 고침했으면 이어서
       inv = 0;
@@ -519,15 +531,17 @@
       $('.b-tdmg').textContent = teamD.toLocaleString();
       $('.b-mdmg').textContent = Math.round(myD).toLocaleString();
       const sig = mates.map((m) => (m.sid === C.seat.sid ? alive : !(L.dn && L.dn[m.sid])) ? 1 : 0).join('');
-      const sig2 = sig + (kind === 'def' ? '|' + hits + '|' + JSON.stringify(L.hit || {}) : '');
+      const sig2 = sig + '|' + hits + '|' + JSON.stringify(L.hit || {});
       if (sig2 !== aliveSig) {
         aliveSig = sig2;
         $('.b-alive').innerHTML = mates
           .map((m, k) => {
             const on = sig[k] === '1',
               mine = m.sid === C.seat.sid;
-            const lv2 = kind === 'def' ? (mine ? hp - hits : ((L.hp && L.hp[m.sid]) || 1) - ((L.hit && L.hit[m.sid]) || 0)) : 0;
-            return '<div class="' + (mine ? 'b-me ' : '') + (on ? '' : 'b-down') + '"><img src="' + A.planeIcon(an, m.cl || 0, !on, 2) + '" alt="">' + esc(mine ? '나' : m.nick) + (on ? (kind === 'def' ? '<em>♥' + lv2 + '</em>' : '') : '<i>격추</i>') + '</div>';
+            // 수비형은 남은 목숨 ♥, 공격형은 무기 단계 ⚔
+            const mDef = mine ? kind === 'def' : L.st && L.st[m.sid] ? L.st[m.sid] === 'd' : kind === 'def';
+            const tag = mDef ? '♥' + (mine ? hp - hits : ((L.hp && L.hp[m.sid]) || 1) - ((L.hit && L.hit[m.sid]) || 0)) : '⚔' + ((L.lv && L.lv[m.sid]) || 1);
+            return '<div class="' + (mine ? 'b-me ' : '') + (on ? '' : 'b-down') + '"><img src="' + A.planeIcon(an, m.cl || 0, !on, 2) + '" alt="">' + esc(mine ? '나' : m.nick) + (on ? '<em class="' + (mDef ? '' : 'b-atk') + '">' + tag + '</em>' : '<i>격추</i>') + '</div>';
           })
           .join('');
       }
@@ -570,14 +584,20 @@
       s = C.seat || {},
       c = C.game.cfg;
     const tname = h.tname;
-    const def = c.kind === 'def';
+    const def = QP.boStyleOf(C) === 'def';
+    lastC = C;
     if (ph === 'lobby') {
       const mates = (C.game.roster || []).filter((x) => x.team === s.team);
+      const pick = c.kind !== 'atk' && c.kind !== 'def';
       return (
         '<div class="center hello thello"><img class="bigdoll pxi" src="' + h.tIcon(144) + '" alt=""><h2>나는 <b>' + esc(s.nick) + '</b></h2>' +
         '<p class="tline">우리 팀은 <b>' + tname + '</b> · ' + mates.length + '명</p>' +
         '<div class="tmates">' + mates.map((m) => '<span' + (m.sid === s.sid ? ' class="me"' : '') + '><img class="pxi" src="' + h.tIcon(40, m.cl) + '" alt="">' + esc(m.sid === s.sid ? '나' : m.nick) + '</span>').join('') + '</div>' +
-        '<p>문제 ' + c.per + '개를 풀 때마다 <b>보스 슈팅</b>을 해요.<br>' + (def ? '<b>방어력 강화</b>: 무기는 모두 같고, 많이 맞힐수록 <b>목숨</b>이 늘어요!' : '<b>공격력 강화</b>: 많이 맞힐수록 무기가 세져요!') + ' 탄막은 피해요.</p></div>'
+        '<p>문제 ' + c.per + '개를 풀 때마다 <b>보스 슈팅</b>을 해요. 탄막은 피해요!</p>' +
+        (pick
+          ? '<p class="bspickq">이번 판에서 나는?</p><div class="bspick">' + pickBtn('atk', def) + pickBtn('def', def) + '</div><p class="bspicknote">시작하기 전까지 바꿀 수 있어요</p>'
+          : '<p>' + (def ? '이번 판은 모두 <b>수비형</b>: 무기는 모두 같고, 많이 맞힐수록 <b>목숨</b>이 늘어요!' : '이번 판은 모두 <b>공격형</b>: 많이 맞힐수록 무기가 세져요!') + '</p>') +
+        '</div>'
       );
     }
     if (ph === 'question') return null;
@@ -619,12 +639,27 @@
   // 위쪽 띠(kid-ui.js trTop)의 「무기 n단계」 자리: 방어력 강화면 「목숨 n개」
   function chip(C, nOk) {
     css();
-    if (C.game.cfg && C.game.cfg.kind === 'def') {
+    if (QP.boStyleOf(C) === 'def') {
       const n = QP.boKit('def', nOk)[1];
       return '<div class="wlv">목숨 <b>' + n + '</b>개 <span class="pips bshp">' + Array.from({ length: Math.min(n, 5) }, () => window.PX.heart(true)).join('') + '</span></div>';
     }
     const lv = QP.boLevel(nOk);
     return '<div class="wlv">무기 <b>' + lv + '</b>단계 <span class="pips">' + [1, 2, 3, 4, 5].map((i) => '<i class="' + (i <= lv ? 'on' : '') + '"></i>').join('') + '</span></div>';
   }
+  // 모이는 곳 고르기 단추 (누르면 바로 화면을 바꾸고 서버에 보냄 — kid-ui 는 이 화면을 다시 그리지 않을 수 있다)
+  let lastC = null;
+  function pickBtn(st, def) {
+    const on = (st === 'def') === def;
+    return (
+      '<button class="bspb ' + st + (on ? ' on' : '') + '" data-bs-pick="' + st + '"><span class="ic">' + (st === 'def' ? '🛡️' : '⚔️') + '</span><b>' + (st === 'def' ? '수비형' : '공격형') + '</b>' +
+      '<small>' + (st === 'def' ? '무기는 보통, 맞힌 만큼 <b>목숨</b>이 늘어요' : '맞힌 만큼 <b>무기</b>가 세져요 (목숨 1)') + '</small></button>'
+    );
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-bs-pick]');
+    if (!b || !lastC) return;
+    if (!QP.boPick(lastC, b.dataset.bsPick)) return;
+    document.querySelectorAll('[data-bs-pick]').forEach((x) => x.classList.toggle('on', x === b));
+  });
   QP.BossScreens = { html, chip };
 })();

@@ -73,8 +73,9 @@
     const left = Math.max(0, Math.ceil((S.endsAt - now) / QP.ms(1)));
     const rows = rowsOf(ref);
     const total = c.per * c.M;
-    const def = c.kind === 'def';
-    const kindTxt = def ? '방어력 강화: 맞힌 만큼 목숨' : '공격력 강화: 맞힌 만큼 센 무기';
+    const def = c.kind === 'def',
+      pick = c.kind !== 'atk' && c.kind !== 'def';
+    const kindTxt = pick ? '공격형 ⚔ · 수비형 🛡 섞여서' : def ? '모두 수비형: 맞힌 만큼 목숨' : '모두 공격형: 맞힌 만큼 센 무기';
     // 지금(또는 다음) 보스
     const bi = ph === 'defend' && ref.live ? ref.live.boss : T.bosses[Math.min(T.mg, T.bosses.length - 1) % T.bosses.length];
     const shownBoss = ph === 'dres' ? T.bosses[(T.mg - 1) % T.bosses.length] : bi;
@@ -111,11 +112,11 @@
           right = '';
         if (ph === 'question' || ph === 'reveal' || ph === 'lobby') {
           const max = Math.max(1, r.n * c.per);
-          mid = '<div class="trpow"><span>' + (def ? '목숨' : '무기 힘') + '</span><span class="bar"><i style="width:' + Math.round((100 * r.blk) / max) + '%"></i></span><em>맞힌 문제 ' + r.blk + '</em></div>';
+          mid = '<div class="trpow"><span>' + (pick ? '맞힌 문제' : def ? '목숨' : '무기 힘') + '</span><span class="bar"><i style="width:' + Math.round((100 * r.blk) / max) + '%"></i></span><em>맞힌 문제 ' + r.blk + '</em></div>';
           right = '<div class="kill">점수 합<b>' + r.tot.toLocaleString() + '</b></div>';
         } else if (ph === 'defend') {
           mid = '<div class="bsbar"><i style="width:' + Math.round((100 * r.d) / maxD) + '%"></i><span>' + r.d.toLocaleString() + '</span></div>';
-          right = '<div class="bsalive">' + Array.from({ length: r.n }, (_, j) => '<img src="' + A.planeIcon(an(r), j, j >= r.alive, 2) + '" alt="">').join('') + '<small>' + (def ? '비행기 ' + r.alive + '/' + r.n + ' · 목숨 ♥' + r.lives : '살아 있는 비행기 ' + r.alive + '/' + r.n) + '</small></div>';
+          right = '<div class="bsalive">' + Array.from({ length: r.n }, (_, j) => '<img src="' + A.planeIcon(an(r), j, j >= r.alive, 2) + '" alt="">').join('') + '<small>' + (def || pick ? '비행기 ' + r.alive + '/' + r.n + ' · 목숨 ♥' + r.lives : '살아 있는 비행기 ' + r.alive + '/' + r.n) + '</small></div>';
         } else if (ph === 'dres') {
           const d = r.last ? r.last.d : 0;
           mid = '<div class="bsbar"><i style="width:' + Math.round((100 * d) / maxD) + '%"></i><span>' + d.toLocaleString() + '</span></div>';
@@ -129,7 +130,7 @@
     const foot =
       ph === 'end'
         ? '<div class="endbtns"><button class="go" data-tr="res">결과표 보기</button><button class="ghost" data-tr="new">새 판</button></div>'
-        : '<div class="foot">' + (ph === 'defend' || ph === 'dres' ? '데미지를 많이 넣은 팀이 이겨요 · 인원이 달라도 공평하게 맞춰요 · 격추된 친구는 다음에 다시 나와요' : def ? '문제를 많이 맞힐수록 보스 슈팅 때 목숨이 늘어요 (무기는 모두 같아요)' : '문제를 많이 맞힐수록 보스 슈팅 때 무기가 세져요') + '</div>';
+        : '<div class="foot">' + (ph === 'defend' || ph === 'dres' ? '데미지를 많이 넣은 팀이 이겨요 · 인원이 달라도 공평하게 맞춰요 · 격추된 친구는 다음에 다시 나와요' : pick ? '문제를 많이 맞힐수록 공격형은 무기가 세지고, 수비형은 목숨이 늘어요' : def ? '문제를 많이 맞힐수록 보스 슈팅 때 목숨이 늘어요 (무기는 모두 같아요)' : '문제를 많이 맞힐수록 보스 슈팅 때 무기가 세져요') + '</div>';
     const h = '<div class="bshead">' + (img ? '<img src="' + img + '" alt="">' : '') + '<div class="head">' + head + '<p>' + sub + '</p></div></div><div class="rows n' + rows.length + '">' + body + '</div>' + foot;
     if (h !== sig) {
       sig = h;
