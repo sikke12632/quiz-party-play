@@ -289,7 +289,7 @@
     const inDef = C && C.treasure && C.screen === 'seat' && C.phase === 'defend';
     if (inDef && !tview) {
       $app.innerHTML = lastHTML = '';
-      tview = QP.TreasureView.mount($app, C);
+      tview = (C.boss ? QP.BossView : QP.TreasureView).mount($app, C);
     } else if (!inDef && tview) {
       tview.unmount();
       tview = null;
@@ -418,7 +418,7 @@
     return (
       '<div class="topbar tr"><div class="me"><img class="pxi" src="' + tIcon(48) + '" alt=""><span><small>나는</small> <b>' + esc(s.nick) + '</b></span></div>' +
       '<div class="tchip">' + esc(QP.teamName(tAnimal())) + '</div>' +
-      (ph !== 'lobby' && ph !== 'end' ? '<div class="wlv">무기 <b>' + lv + '</b>단계 <span class="pips">' + [1, 2, 3, 4, 5].map((i) => '<i class="' + (i <= lv ? 'on' : '') + '"></i>').join('') + '</span></div>' : '') +
+      (ph !== 'lobby' && ph !== 'end' ? C.boss ? QP.BossScreens.chip(C, tBlk()) : '<div class="wlv">무기 <b>' + lv + '</b>단계 <span class="pips">' + [1, 2, 3, 4, 5].map((i) => '<i class="' + (i <= lv ? 'on' : '') + '"></i>').join('') + '</span></div>' : '') +
       '<div class="spacer"></div>' +
       (C.round ? '<div class="rd">' + Math.min(C.round, total) + ' / ' + total + '문제</div>' : '') +
       (label ? '<div class="timer"><span>' + label + '</span> <b id="tN">' + t + '</b>초 <span class="bar"><i id="tB" style="width:' + Math.round((100 * C.timeLeft()) / (phaseTotal() || 1)) + '%"></i></span></div>' : '') +
@@ -431,6 +431,11 @@
       c = C.game.cfg;
     if (s.team === undefined) return '<div class="center"><div class="spin"></div></div>';
     const tname = esc(QP.teamName(tAnimal()));
+    // 보스 슈팅: 모이는 곳·정답·결과·끝 화면은 boss-kid.js (문제 화면은 null → 아래 그대로)
+    if (C.boss) {
+      const bh = QP.BossScreens.html(C, { tIcon, tname });
+      if (bh !== null) return bh;
+    }
     if (ph === 'lobby') {
       const mates = (C.game.roster || []).filter((x) => x.team === s.team);
       return (

@@ -33,7 +33,8 @@
       const c = b.c;
       if (c.screen !== 'seat') return;
       if (c.mafia) return actMafia(b);
-      if (c.treasure) walkTreasure(b);
+      if (c.boss) QP.boBotFly(c);
+      else if (c.treasure) walkTreasure(b);
       if (c.chase) runChase(b);
       const r = c.round, q = c.myQ();
       if (q && b.busy.a !== r) {

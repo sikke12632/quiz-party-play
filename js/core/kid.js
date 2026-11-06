@@ -249,8 +249,12 @@
       return true;
     }
     /* ---------- 보물 지키기 ---------- */
+    // 보스 슈팅(boss)은 보물 지키기 흐름(문제·정답·미니게임 defend·결과 dres)을 같이 쓴다
     get treasure() {
-      return !!(this.game && this.game.mode === 'treasure');
+      return !!(this.game && (this.game.mode === 'treasure' || this.game.mode === 'boss'));
+    }
+    get boss() {
+      return !!(this.game && this.game.mode === 'boss');
     }
     // 미니게임 중 내 위치(1초 3번까지, 움직였을 때만). x·y 는 세계 좌표
     sendPos(x, y, force) {
