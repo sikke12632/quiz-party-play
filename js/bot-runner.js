@@ -67,15 +67,19 @@
       const L = c.game.ch,
         cfg = c.game.cfg;
       b.ran = L.mg;
-      const gates = QP.chGates(L.seed, cfg),
+      const gates = QP.chGates(L.seed, cfg, L.mg),
         times = QP.chTimes(cfg, L.mg);
       const skill = Math.min(0.98, b.acc + 0.25);
       gates.forEach((g, j) => {
         const tm = times[j];
         const at = L.t0 + QP.ms(tm.ch0 + 0.3 + Math.random() * (tm.ch1 - tm.ch0 - 0.6));
+        const el = (at - L.t0) / QP.ms(1) - tm.ch0; // 고르기 시작 뒤 몇 초에 누르나
         setTimeout(() => {
           const right = Math.random() < skill;
-          const lanes = [0, 1, 2, 3].filter((l) => right === g.open.includes(l));
+          // 안개 속에서 누르면 그냥 찍기, 바위가 떨어지기 전에 누르면 그 길도 뚫려 보인다
+          const seen = g.ev === 'fall' && el < g.fallAt ? g.open.concat([g.fall]) : g.open;
+          const blind = g.ev === 'fog' && el < g.fogT;
+          const lanes = blind ? [0, 1, 2, 3] : [0, 1, 2, 3].filter((l) => right === seen.includes(l));
           c.pickLane(QP.chCode(L.mg, j), lanes[Math.floor(Math.random() * lanes.length)]);
         }, Math.max(0, at - c.net.now()));
       });

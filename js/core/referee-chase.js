@@ -20,7 +20,7 @@
     pubCfg() {
       const c = this.S.cfg;
       const o = {};
-      for (const k of ['per', 'M', 'NJ', 'hearts', 'times', 'open', 'tQ', 'tReveal', 'tIntro', 'tRun', 'tWait', 'tShow', 'tResult', 'stampN', 'tLast']) o[k] = c[k];
+      for (const k of ['per', 'M', 'NJ', 'hearts', 'times', 'open', 'tQ', 'tReveal', 'tIntro', 'tRun', 'tWait', 'tShow', 'tResult', 'stampN', 'tLast', 'tWarn', 'events']) o[k] = c[k];
       o.mode = 'chase';
       return o;
     }
@@ -186,7 +186,7 @@
       const stamp = runners.filter((s) => (s.cblk || 0) >= QP.chStampN(c)).map((s) => s.sid);
       for (const s of this.seatList()) s.cblk = 0;
       const seed = (S.seed + mg * 7919 + 31) >>> 0;
-      this.gates = QP.chGates(seed, c);
+      this.gates = QP.chGates(seed, c, mg);
       this.run = { mg, t0, times, alive: new Set(runners.map((s) => s.sid)), caught: 0, stamp: new Set(stamp), saved: 0 };
       this.ch = { mg, seed, t0, runners: runners.map((s) => s.sid), stamp, res: {}, hearts: C.hearts };
       this.log('엄마 피해 도망가기 ' + (mg + 1) + '번째 (' + runners.length + '명)');

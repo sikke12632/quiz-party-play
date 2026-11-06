@@ -18,6 +18,7 @@
     hearts: 30,
     times: [3, 3, 3, 3, 3, 3], // 갈림길마다 고르는 시간(2026-11-06 담임: 5초면 너무 쉽고 3초가 적당)
     tLast: 2, // 마지막 미니게임은 갈림길마다 2초
+    tWarn: 1.2, // 전광판(안개·낙석 주의) 보는 시간 — 깜짝 장치가 있는 미니게임만
     open: [2, 2, 2, 1, 1, 1], // 뚫린 길 수
     tQ: 20,
     tReveal: 4,
@@ -34,15 +35,37 @@
   // 숙제 도장 기준: stampN 개(문제 묶음이 짧으면 「하나 빼고 다」)
   QP.chStampN = (cfg) => Math.min(cfg.stampN || 4, Math.max(1, (cfg.per || 5) - 1));
 
+  // 갈림길 깜짝 장치(2026-11-06 담임: 안개·낙석, 고르기 전에 전광판으로 「○○ 주의!」)
+  //   1번째 미니게임: 없음 · 2번째: 안개(갈림길 절반쯤) · 3번째부터: 낙석(절반쯤) + 안개
+  //   안개 = 고르기 시작 뒤 fogT 초 동안 갈래 길이 안 보임. 낙석 = 뚫려 보이던 길 fall 에 fallAt 초에 바위가 떨어짐(그 길은 막힌 길)
+  QP.chEvLevel = (cfg, mg) => (cfg.events === false || mg === undefined ? 0 : Math.min(2, mg));
+  QP.chChoose = (cfg, mg, j) => (mg !== undefined && cfg.tLast && mg >= (cfg.M || 3) - 1 ? cfg.tLast : cfg.times[j] || cfg.times[cfg.times.length - 1]);
   // 미니게임 하나의 갈림길들(모든 기기가 같은 씨앗으로 같은 것을 만든다)
-  QP.chGates = function (seed, cfg) {
+  QP.chGates = function (seed, cfg, mg) {
     const r = QP.rng(seed);
     const out = [];
     for (let j = 0; j < cfg.NJ; j++) {
       const open = [];
       const lanes = r.shuffle([0, 1, 2, 3]);
       for (let k = 0; k < (cfg.open[j] || 1); k++) open.push(lanes[k]);
-      out.push({ open: open.sort(), sym: r.shuffle([0, 1, 2, 3]), order: r.shuffle([0, 1, 2, 3]) });
+      out.push({ open: open.sort(), sym: r.shuffle([0, 1, 2, 3]), order: r.shuffle([0, 1, 2, 3]), shut: lanes.slice(open.length) });
+    }
+    // 깜짝 장치는 따로 씨앗(길 모양은 예전과 같게)
+    const lv = QP.chEvLevel(cfg, mg);
+    if (lv > 0) {
+      const e = QP.rng((seed ^ 0x5bd1e995) >>> 0);
+      out.forEach((g, j) => {
+        const T = QP.chChoose(cfg, mg, j);
+        const x = e();
+        if (lv >= 2 && x < 0.5) g.ev = 'fall';
+        else if (x < (lv >= 2 ? 0.75 : 0.55)) g.ev = 'fog';
+        if (g.ev === 'fall') {
+          g.fall = g.shut[Math.floor(e() * g.shut.length)]; // 처음엔 뚫려 보이는 길
+          g.fallAt = Math.round(T * (0.45 + e() * 0.25) * 100) / 100;
+        }
+        if (g.ev === 'fog') g.fogT = Math.round(T * 0.35 * 100) / 100;
+      });
+      if (!out.some((g) => g.ev)) (out[1].ev = 'fog'), (out[1].fogT = Math.round(QP.chChoose(cfg, mg, 1) * 0.35 * 100) / 100);
     }
     return out;
   };
@@ -53,7 +76,8 @@
     let t = 0;
     for (let j = 0; j < cfg.NJ; j++) {
       const T = last ? cfg.tLast : cfg.times[j] || cfg.times[cfg.times.length - 1];
-      const x = { run: t, ch0: t + cfg.tRun, ch1: t + cfg.tRun + T };
+      const run = cfg.tRun + (QP.chEvLevel(cfg, mg) > 0 ? cfg.tWarn || 1.2 : 0); // 깜짝 장치가 있는 미니게임: 전광판 보는 시간
+      const x = { run: t, ch0: t + run, ch1: t + run + T };
       x.show = x.ch1 + cfg.tWait;
       x.end = x.show + cfg.tShow;
       out.push(x);

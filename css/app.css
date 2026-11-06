@@ -795,3 +795,10 @@ img.pxi { image-rendering: pixelated; border-radius: 4px; }
 .cbub.ok { color: #2f7a2a; }
 .cfoot .st { color: #c0392b; }
 .tpow.cst b { color: #c0392b; } .tpow.cst small { font-size: 16px; color: var(--brown); }
+/* 전광판(안개·낙석 주의) */
+.cwarn { position: absolute; transform: translate(-50%, -50%); background: #1a1410; color: #ffb02e; font-family: 'QPTitle', serif; font-size: 64px; padding: 10px 40px; border: 6px solid #4a3828; border-radius: 10px; letter-spacing: 6px; white-space: nowrap;
+  text-shadow: 0 0 10px #ff8a00, 0 0 22px #ff6a00; box-shadow: 0 0 0 4px #2a1e14, 8px 8px 0 rgba(0,0,0,.4);
+  background-image: radial-gradient(rgba(255,176,46,.12) 1px, transparent 1.5px); background-size: 6px 6px; animation: cwarn .5s steps(2) infinite; }
+.cwarn.small { font-size: 22px; padding: 2px 14px; border-width: 3px; letter-spacing: 2px; animation: none; }
+@keyframes cwarn { 50% { color: #ffe06a; text-shadow: 0 0 14px #ffd000, 0 0 30px #ff9a00; } }
+.chv.tv .cwarn { font-size: 84px; } .chv.tv .cwarn.small { font-size: 28px; }

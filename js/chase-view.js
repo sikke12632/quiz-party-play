@@ -186,7 +186,7 @@
       const cfg = G.cfg,
         ch = G.ch;
       const times = QP.chTimes(cfg, ch.mg);
-      const gates = ch._gates && ch._seed === ch.seed ? ch._gates : ((ch._seed = ch.seed), (ch._gates = QP.chGates(ch.seed, cfg)));
+      const gates = ch._gates && ch._seed === ch.seed ? ch._gates : ((ch._seed = ch.seed), (ch._gates = QP.chGates(ch.seed, cfg, ch.mg)));
       const t = (o.now() - ch.t0) / QP.ms(1);
       // 지금 갈림길과 단계
       let j = times.findIndex((x) => t < x.end);
@@ -297,10 +297,15 @@
       g.fillRect(0, LT, fx, LH * 4);
       g.fillStyle = 'rgba(120,80,40,.25)';
       for (let i = 0; i < 70; i++) g.fillRect(md(i * 29 - scroll, Math.max(1, fx)), LT + 2 + ((i * 17) % (LH * 4 - 4)), 2, 1);
+      // 깜짝 장치: 고르기 시작 뒤 지난 초(달리기 중이면 -1, 고르기가 끝났으면 크게)
+      const ce = ph === 'choose' ? t - tm.ch0 : ph === 'run' || ph === 'intro' ? -1 : 99;
+      const fallDone = gate.ev === 'fall' && ce >= gate.fallAt;
+      const fallU = gate.ev === 'fall' ? (ce - gate.fallAt) / 0.25 : -1; // 0~1 떨어지는 중
       for (let l = 0; l < 4; l++) {
         const y = LT + l * LH + 2,
           h = LH - 4;
-        if (gate.open.includes(l)) {
+        const looksOpen = gate.open.includes(l) || (gate.ev === 'fall' && l === gate.fall && !fallDone);
+        if (looksOpen) {
           g.fillStyle = '#e8c98e';
           g.fillRect(fx, y, W - fx, h);
           g.fillStyle = '#f7e2b2';
@@ -316,10 +321,24 @@
           }
           g.drawImage(A.FLAG, W - 14, y + h - A.FLAG.height);
         } else {
-          g.fillStyle = '#c9a46a';
-          g.fillRect(fx, y, RXX - fx + 6, h);
-          g.drawImage(A.ROCK, RXX - 2, y + h - A.ROCK.height + 1);
-          g.drawImage(A.XS, RXX + 3, y - 3);
+          const falling = gate.ev === 'fall' && l === gate.fall && fallU < 1;
+          const shake = gate.ev === 'fall' && l === gate.fall && fallU >= 1 && fallU < 3 ? md(T * 30, 2) : 0;
+          if (gate.ev === 'fall' && l === gate.fall) {
+            // 떨어진 바위 뒤로도 길이 남아 있다(원래 뚫려 보이던 길)
+            g.fillStyle = '#e8c98e';
+            g.fillRect(fx, y, W - fx, h);
+          } else {
+            g.fillStyle = '#c9a46a';
+            g.fillRect(fx, y, RXX - fx + 6, h);
+          }
+          const dy = falling ? -Math.round((1 - Math.max(0, fallU)) * (y + 20)) : 0;
+          if (falling) {
+            g.fillStyle = 'rgba(40,30,20,.35)'; // 떨어지는 그림자
+            g.fillRect(RXX + 2, y + h - 2, Math.round(10 * Math.max(0.2, fallU)), 2);
+          }
+          g.drawImage(A.ROCK, RXX - 2 + shake, y + h - A.ROCK.height + 1 + dy);
+          if (!falling) g.drawImage(A.XS, RXX + 3, y - 3);
+          if (gate.ev === 'fall' && l === gate.fall && fallU >= 1 && fallU < 4) put(el('fall', 'ckung', '쿵!'), RXX + 6, y - 2);
         }
         g.drawImage(A.SYM[gate.sym[l]].sign, fx - 17, y + Math.floor((h - 15) / 2));
         // 내가 고른 길(내 화면에서만, 공개 전)
@@ -328,7 +347,27 @@
           g.strokeRect(fx - 17.5, y + Math.floor((h - 15) / 2) - 0.5, 16, 16);
         }
       }
+      // 안개: 갈래 길 위를 덮었다가 fogT 초 뒤 걷힌다
+      if (gate.ev === 'fog') {
+        const a = ce < 0 ? 1 : ce < gate.fogT ? 1 : Math.max(0, 1 - (ce - gate.fogT) / 0.35);
+        if (a > 0) {
+          g.fillStyle = 'rgba(226,232,236,' + 0.96 * a + ')';
+          g.fillRect(fx + 1, LT - 4, W - fx, LH * 4 + 6);
+          for (let i = 0; i < 40; i++) {
+            const bx = fx + md(i * 23 + T * 12, W - fx),
+              by = LT + ((i * 37) % (LH * 4));
+            g.fillStyle = 'rgba(250,252,255,' + 0.7 * a + ')';
+            g.fillRect(bx, by, 8, 3);
+            g.fillRect(bx + 2, by - 2, 4, 2);
+          }
+        }
+      }
       for (const e of els.values()) e.used = false;
+      // 전광판: 고르기 전에 크게 「안개 주의!」「낙석 주의!」, 고르는 동안은 작게
+      if (gate.ev && (ph === 'run' || ph === 'choose')) {
+        const w = el('warn', 'cwarn' + (ph === 'choose' ? ' small' : ''), gate.ev === 'fog' ? '⚠ 안개 주의!' : '⚠ 낙석 주의!');
+        put(w, W / 2, ph === 'choose' ? LT - 4 : LT + LH * 2.6);
+      }
       const list = [];
       let caughtN = 0,
         savedN = 0,
