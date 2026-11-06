@@ -242,6 +242,7 @@
     // 예전에 저장한 돋보기 %는 버린다(2026-11-05 기본값 8→10%)
     if (pf.mafia && pf.mafiaV !== 2) delete pf.mafia.mag;
     const mf = Object.assign({}, QP.MAFIA_CFG, pf.mafia || {});
+    const tf = Object.assign({}, QP.TREASURE_CFG, pf.treasure || {});
     ITEMS = await buildItems();
     ONLY = pf.only === true; // 담임: OX·숫자 답도 괜찮다(서술형만 아니면) → 기본은 모두 낸다
     // 예전에 고른 것(packs·mine·gen) → 새 모양(sel)
@@ -255,8 +256,15 @@
       '<span class="imbtns"><button class="mini on" id="imp">문제 넣기 (엑셀)</button><a class="mini" href="questions/template.xlsx" download="퀴즈파티-문제-양식.xlsx">양식 내려받기</a></span></div>' +
       (MINE_OK === false && !QP.isMock ? '<p class="loc">서버에 아직 저장할 수 없어서 넣은 문제는 이 컴퓨터에만 있어요.</p>' : '') +
       '<div class="tree">' + treeHTML() + '</div></section>' +
-      '<section><h3>놀이</h3><div class="seg" id="modeseg"><label' + (pf.mode !== 'mafia' ? ' class="on"' : '') + '><input type="radio" name="mode" value="gold"' + (pf.mode !== 'mafia' ? ' checked' : '') + '> 황금 찾기</label><label' + (pf.mode === 'mafia' ? ' class="on"' : '') + '><input type="radio" name="mode" value="mafia"' + (pf.mode === 'mafia' ? ' checked' : '') + '> 도깨비 찾기</label><label class="off">우리반 섬 짓기 <i>곧</i></label></div>' +
-      '<p class="modehelp" data-for="gold">맞히면 상자를 열어 금을 모아요. 순위 경쟁.</p><p class="modehelp" data-for="mafia">모두 같은 문제를 풀고, 맞힌 친구들이 몰래 숨은 도깨비를 찾아요. 말로 하는 건 괜찮고 화면 보여 주기는 안 돼요.</p></section>' +
+      '<section><h3>놀이</h3><div class="seg" id="modeseg">' +
+      [['gold', '황금 찾기'], ['mafia', '도깨비 찾기'], ['treasure', '보물 지키기']].map(([v, n]) => '<label' + ((pf.mode || 'gold') === v ? ' class="on"' : '') + '><input type="radio" name="mode" value="' + v + '"' + ((pf.mode || 'gold') === v ? ' checked' : '') + '> ' + n + '</label>').join('') +
+      '<label class="off">우리반 섬 짓기 <i>곧</i></label></div>' +
+      '<p class="modehelp" data-for="gold">맞히면 상자를 열어 금을 모아요. 순위 경쟁.</p><p class="modehelp" data-for="mafia">모두 같은 문제를 풀고, 맞힌 친구들이 몰래 숨은 도깨비를 찾아요. 말로 하는 건 괜찮고 화면 보여 주기는 안 돼요.</p>' +
+      '<p class="modehelp" data-for="treasure">팀 대결. 문제를 몇 개 풀 때마다 디벗에서 <b>보물 지키기</b> 미니게임을 해요. 많이 맞힌 아이일수록 무기가 세져요. TV에는 팀별 하트가 나와요.</p></section>' +
+      '<section class="mafiaopt" data-for="treasure"><h3>보물 지키기 <small>해 보고 바꿔요</small></h3>' +
+      [['tTeams', '팀 수', 2, 6, tf.teams], ['tPer', '미니게임 사이 문제', 3, 10, tf.per], ['tM', '미니게임 횟수', 1, 5, tf.M], ['tFoes', '적 많기(한 명당)', 10, 40, tf.foes]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
+      '<br>' + [['ttQ', '문제', 10, 60, tf.tQ], ['ttD', '미니게임', 15, 40, tf.tDefend]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '">초</label>').join('') +
+      '</section>' +
       '<section class="mafiaopt" data-for="mafia"><h3>도깨비 찾기 <small>시뮬레이션 권장값(작업/시뮬레이션-마피아.md). 해 보고 바꿔요</small></h3>' +
       [['mQ', '문제 수', 6, 20, mf.Q], ['mG', '도깨비', 1, 5, mf.G], ['mH', '힌트까지 정답', 30, 150, mf.H], ['mMag', '돋보기 %', 0, 30, Math.round(mf.mag * 100)], ['mFake', '가짜 돋보기 %', 0, 60, Math.round((mf.fake || 0) * 100)], ['mLimit', '잘못 지목 한도', 1, 5, mf.limit]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
       '<br>' + [['mtQ', '문제', 10, 60, mf.tQ], ['mtR', '지목', 4, 30, mf.tResult], ['mtV', '투표', 5, 30, mf.tVote], ['mtS', '공개', 3, 15, mf.tShow]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '">초</label>').join('') +
@@ -455,6 +463,7 @@
       mode: (f('mode').find((x) => x.checked) || { value: 'gold' }).value,
     });
     pf.mafiaV = 2;
+    pf.treasure = { teams: num('tTeams', 4), per: num('tPer', 5), M: num('tM', 3), foes: num('tFoes', 22), tQ: num('ttQ', 20), tDefend: num('ttD', 25) };
     pf.mafia = { Q: num('mQ', 12), G: num('mG', 3), H: num('mH', 70), mag: num('mMag', 10) / 100, fake: num('mFake', 25) / 100, limit: num('mLimit', 3), tQ: num('mtQ', 20), tResult: num('mtR', 8), tVote: num('mtV', 10), tShow: num('mtS', 6) };
     const err = document.getElementById('err');
     if (!items.length) return (err.textContent = '출제 범위를 하나 이상 골라요');
@@ -484,9 +493,10 @@
       if (Date.now() - stepAt > 12000) err.textContent = '판을 만드는 중… (' + stepName + ' — 서버 답을 ' + Math.round((Date.now() - stepAt) / 1000) + '초째 기다려요. 인터넷 연결을 확인해 주세요)';
     }, 1000);
     try {
-      const mafia = pf.mode === 'mafia';
-      const Cls = mafia ? QP.MafiaReferee : QP.Referee;
-      ref = await Cls.create(net, { cfg: mafia ? Object.assign({ mode: 'mafia' }, pf.mafia) : pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
+      const mafia = pf.mode === 'mafia',
+        trs = pf.mode === 'treasure';
+      const Cls = mafia ? QP.MafiaReferee : trs ? QP.TreasureReferee : QP.Referee;
+      ref = await Cls.create(net, { cfg: mafia ? Object.assign({ mode: 'mafia' }, pf.mafia) : trs ? Object.assign({ mode: 'treasure' }, pf.treasure) : pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
           stepName = s;
           stepAt = Date.now();
           err.textContent = '판을 만드는 중… (' + s + ')';
@@ -524,8 +534,10 @@
       return;
     }
     const ph = S.phase;
+    if (ph === 'lobby' && QP.TreasureTV) QP.TreasureTV.hide();
     if (ph === 'lobby') return scLobby();
     if (S.mode === 'mafia') return ph === 'end' ? scMafiaEnd() : scMafia();
+    if (S.mode === 'treasure') return scTreasure();
     if (ph === 'end') return scEnd();
     return scGame();
   }
@@ -547,11 +559,11 @@
       qr.make();
       const url = joinURL().replace(/^https?:\/\//, '').replace(/[a-z]+\.html\?c=\d+.*$/, '');
       $ui.innerHTML =
-        '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips">' + (ref.S.mode === 'mafia' ? '<span class="chip mode maf">도깨비 찾기</span><span class="chip">' + ref.S.cfg.Q + '문제</span>' : '<span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>') +
+        '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips">' + (ref.S.mode === 'mafia' ? '<span class="chip mode maf">도깨비 찾기</span><span class="chip">' + ref.S.cfg.Q + '문제</span>' : ref.S.mode === 'treasure' ? '<span class="chip mode trs">보물 지키기</span><span class="chip">' + ref.nTeams() + '팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : '<span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>') +
         (ref.S.range ? '<span class="chip' + (ref.S.test ? ' test' : '') + '">' + esc(ref.S.range) + '</span>' : ref.S.packTitles.map((t) => '<span class="chip' + (/시험용/.test(t) ? ' test' : '') + '">' + esc(t) + '</span>').join('')) + '</div></div>' +
         '<div class="joinbox"><div class="lab">입장 번호</div><div class="code">' + ref.S.code.split('').map((c) => '<i>' + c + '</i>').join('') + '</div><div class="qr">' + qr.createImgTag(4, 0) + '</div><div class="url">디벗으로 <b>QR</b>을 찍거나<br>주소창에 <b>' + esc(url) + '</b></div></div>' +
         '<div class="count">들어온 친구 <b id="n">0</b> 명</div><button class="start" id="go">시작!</button>' +
-        (ref.S.mode !== 'mafia' && QP.showRules ? '<button class="rulesbtn" id="rulesbtn">규칙 설명</button>' : '') +
+        (ref.S.mode === 'gold' && QP.showRules ? '<button class="rulesbtn" id="rulesbtn">규칙 설명</button>' : '') +
         (ref.S.mode === 'mafia' ? '<div class="classrule">말로 하는 건 괜찮아요 · <b>화면 보여 주기는 안 돼요</b> · 내 인형은 말해도, 거짓말해도 돼요</div>' : '');
       const rb = document.getElementById('rulesbtn');
       if (rb) rb.onclick = () => QP.showRules(ref.S.mode, ref.S.cfg);
@@ -727,6 +739,29 @@
     tools();
     tick();
   }
+  /* ================= 보물 지키기 TV (도트, treasure-tv.js) ================= */
+  function scTreasure() {
+    if (screen !== 'treasure') {
+      screen = 'treasure';
+      tv().setView('lobby');
+    }
+    QP.TreasureTV.draw($ui, ref, {
+      onResults: () => {
+        showRes = true;
+        drawResults();
+      },
+      onNew: () => {
+        QP.TreasureTV.hide();
+        saved.set(null);
+        ref.stop();
+        ref = null;
+        showRes = false;
+        $tools.innerHTML = '';
+        scSetup();
+      },
+    });
+    tools();
+  }
   function scMafiaEnd() {
     const T = tv();
     const S = ref.S,
@@ -889,7 +924,7 @@
   function tools() {
     if (!ref) return;
     const S = ref.S;
-    let h = '<div class="tbtns"><button class="mini" data-t="att">출석판' + (ref.alerts.length ? ' <i class="dot"></i>' : '') + '</button>' + (S.phase !== 'lobby' && S.phase !== 'end' ? (S.endAfter || S.endEarly ? '<button class="mini endbtn" disabled>이번 문제 뒤에 끝나요</button>' : '<button class="mini endbtn" data-t="end">이번 문제까지 하고 끝내기</button>') : '') + '</div>';
+    let h = '<div class="tbtns"><button class="mini" data-t="att">출석판' + (ref.alerts.length ? ' <i class="dot"></i>' : '') + '</button>' + (S.phase !== 'lobby' && S.phase !== 'end' ? (S.endAfter || S.endEarly ? '<button class="mini endbtn" disabled>이번 문제 뒤에 끝나요</button>' : '<button class="mini endbtn" data-t="end">' + (S.mode === 'treasure' ? '이번 보물 지키기까지 하고 끝내기' : '이번 문제까지 하고 끝내기') + '</button>') : '') + '</div>';
     for (const a of ref.alerts) h += '<div class="alert">' + a.num + '번 자리에 다른 기기가 들어오려 해요 <button class="mini" data-hand="' + a.num + '" data-uid="' + a.uid + '">넘겨주기</button><button class="mini" data-dis="' + a.num + '" data-uid="' + a.uid + '">무시</button></div>';
     if (showAtt) {
       h += '<div class="att"><h3>출석판 <small>TV에 번호가 보여요. 다 보면 닫아요</small><button class="mini" data-t="att">닫기</button></h3><div class="attgrid">';

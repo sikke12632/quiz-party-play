@@ -33,6 +33,7 @@
       const c = b.c;
       if (c.screen !== 'seat') return;
       if (c.mafia) return actMafia(b);
+      if (c.treasure) walkTreasure(b);
       const r = c.round, q = c.myQ();
       if (q && b.busy.a !== r) {
         b.busy.a = r;
@@ -56,6 +57,28 @@
         const t = Math.random() < 0.7 ? o.targets[0] : o.targets[Math.floor(Math.random() * o.targets.length)];
         setTimeout(() => c.pickTarget(t), QP.ms(1 + Math.random() * 3));
       }
+    }
+    // 보물 지키기 봇: 미니게임 동안 가까운 적 쪽으로 걷고 위치를 보낸다
+    function walkTreasure(b) {
+      const c = b.c;
+      if (c.phase !== 'defend' || !c.game.live || !c.seat || b.walk === c.game.live.mg) return;
+      const L = c.game.live,
+        team = c.seat.team;
+      b.walk = L.mg;
+      const mates = (c.game.roster || []).filter((x) => x.team === team);
+      const k = mates.findIndex((x) => x.sid === c.seat.sid);
+      const E = QP.trSchedule(L.seed, L.dur, L.n[team]);
+      const home = QP.trHome(k, mates.length);
+      let p = home.slice();
+      const dead = {};
+      const tm = setInterval(() => {
+        if (c.phase !== 'defend' || c.game.live.mg !== L.mg) return clearInterval(tm);
+        const t = (c.net.now() - L.t0) / QP.ms(1);
+        if (t < 0) return;
+        for (const x of c.game.live.kills[team] || []) dead[x[0]] = 1;
+        p = QP.trBotMove(p, E, t, 0.1, dead, home);
+        c.sendPos(p[0], p[1]);
+      }, QP.ms(0.1));
     }
     // 도깨비 찾기 봇: 답 → 상자 → 돋보기·지목 → 투표 (마을은 마지막 힌트 무리를 의심, 도깨비는 동료를 감싼다)
     function actMafia(b) {

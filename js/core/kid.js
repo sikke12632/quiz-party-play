@@ -248,6 +248,23 @@
       this.emit();
       return true;
     }
+    /* ---------- 보물 지키기 ---------- */
+    get treasure() {
+      return !!(this.game && this.game.mode === 'treasure');
+    }
+    // 미니게임 중 내 위치(1초 3번까지, 움직였을 때만). x·y 는 세계 좌표
+    sendPos(x, y, force) {
+      const L = this.game && this.game.live;
+      if (this.phase !== 'defend' || !L) return false;
+      const p = { r: L.mg, x: Math.round(x * 10), y: Math.round(y * 10) };
+      const now = this.net.now();
+      const same = this.lastP && this.lastP.r === p.r && this.lastP.x === p.x && this.lastP.y === p.y;
+      if ((same && !force) || now - (this.lastPAt || 0) < QP.ms(0.33)) return false;
+      this.lastP = p;
+      this.lastPAt = now;
+      this.write({ p });
+      return true;
+    }
     /* ---------- 도깨비 찾기 ---------- */
     // 이번 라운드에 내게 온 것(자리 문서에서)
     mine(k) {
