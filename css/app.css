@@ -789,3 +789,9 @@ img.pxi { image-rendering: pixelated; border-radius: 4px; }
 .chtv .hint b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 28px; color: var(--ink); }
 .chtv .endbtns { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; }
 .closeg { position: fixed; right: 30px; bottom: 178px; font-size: 18px; padding: 8px 22px; border: 0; border-radius: 999px; background: rgba(251,244,228,.9); color: var(--brown); box-shadow: 0 3px 0 #c9b48f, 0 5px 12px rgba(60,40,20,.2); }
+/* 숙제 도장 */
+.cstamp { gap: 6px; } .cstamp img { width: 30px; image-rendering: pixelated; } .cstamp span { font-family: 'QPTitle', serif; font-size: 18px; color: #c0392b; }
+.cstamp[hidden] { display: none; }
+.cbub.ok { color: #2f7a2a; }
+.cfoot .st { color: #c0392b; }
+.tpow.cst b { color: #c0392b; } .tpow.cst small { font-size: 16px; color: var(--brown); }

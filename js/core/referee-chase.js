@@ -4,7 +4,7 @@
  *
  * 판 문서 roster: [{sid, nick, a, cl}]   a = TEAM_ANIMALS 번호(도트 동물), cl = 옷 색
  * 판 문서 cc:     { per, M, mg(끝난 미니게임 수), hearts, max }
- * 판 문서 ch:     미니게임 중 { mg, seed, t0, runners:[sid], res:{갈림길:{p:{sid:길}, c:[잡힌 sid]}}, hearts }
+ * 판 문서 ch:     미니게임 중 { mg, seed, t0, runners:[sid], stamp:[숙제 도장 받은 sid], res:{갈림길:{p:{sid:길}, c:[잡힌 sid], s:[도장으로 봐준 sid]}}, hearts }
  * 판 문서 cres:   미니게임 결과 { mg, caught, hearts, alive, n }
  * 자리 문서(그 아이만): an(동물), cl, res{r, ok, my, ans, exp, left}, fin{hearts, stars, over, nOk, nAns}
  * 아이가 쓰는 칸: a{r,v} 답, p{r: chCode(미니게임, 갈림길), x: 고른 길, y: 0}
@@ -20,7 +20,7 @@
     pubCfg() {
       const c = this.S.cfg;
       const o = {};
-      for (const k of ['per', 'M', 'NJ', 'hearts', 'times', 'open', 'tQ', 'tReveal', 'tIntro', 'tRun', 'tWait', 'tShow', 'tResult']) o[k] = c[k];
+      for (const k of ['per', 'M', 'NJ', 'hearts', 'times', 'open', 'tQ', 'tReveal', 'tIntro', 'tRun', 'tWait', 'tShow', 'tResult', 'stampN', 'tLast']) o[k] = c[k];
       o.mode = 'chase';
       return o;
     }
@@ -136,8 +136,9 @@
         if (ok) {
           st.ok++;
           s.nOk++;
+          s.cblk = (s.cblk || 0) + 1; // 이번 묶음 맞힌 수(숙제 도장)
         } else QP.Deck.retry(s.deck, q.id);
-        ops.push({ path: this.path('players/' + s.num), data: { res: { r: S.round, ok, my: s.ans ? QP.expandAns(q, s.ans.v) : null, ans: QP.answerText(q), exp: q.explain || '', left } }, merge: true });
+        ops.push({ path: this.path('players/' + s.num), data: { res: { r: S.round, ok, my: s.ans ? QP.expandAns(q, s.ans.v) : null, ans: QP.answerText(q), exp: q.explain || '', left, blk: s.cblk || 0 } }, merge: true });
       }
       await this.net.batch(ops);
       this.ending = false;
@@ -174,17 +175,20 @@
       S.phase = 'chase';
       S.phaseAt = this.net.now();
       const t0 = S.phaseAt + QP.ms(c.tIntro);
-      const times = QP.chTimes(c);
+      const times = QP.chTimes(c, mg);
       S.endsAt = t0 + QP.ms(times[times.length - 1].end);
       // 지금 접속해 있는 아이만 달린다(끊긴 아이 때문에 하트가 깎이지 않게)
       const runners = this.seatList()
         .filter((s) => this.alive(s))
         .sort((a, b) => a.num - b.num);
       for (const s of this.seatList()) s.pk = {};
+      // 숙제 도장: 직전 묶음에서 stampN 개 넘게 맞힌 아이(이 미니게임에서 한 번 봐줌). 묶음 맞힌 수는 여기서 새로
+      const stamp = runners.filter((s) => (s.cblk || 0) >= QP.chStampN(c)).map((s) => s.sid);
+      for (const s of this.seatList()) s.cblk = 0;
       const seed = (S.seed + mg * 7919 + 31) >>> 0;
       this.gates = QP.chGates(seed, c);
-      this.run = { mg, t0, times, alive: new Set(runners.map((s) => s.sid)), caught: 0 };
-      this.ch = { mg, seed, t0, runners: runners.map((s) => s.sid), res: {}, hearts: C.hearts };
+      this.run = { mg, t0, times, alive: new Set(runners.map((s) => s.sid)), caught: 0, stamp: new Set(stamp), saved: 0 };
+      this.ch = { mg, seed, t0, runners: runners.map((s) => s.sid), stamp, res: {}, hearts: C.hearts };
       this.log('엄마 피해 도망가기 ' + (mg + 1) + '번째 (' + runners.length + '명)');
       await this.net.update(this.path(), { phase: 'chase', round: S.round, endsAt: S.endsAt, ch: this.ch, cc: this.pubC(), roster: this.roster() });
       clearTimeout(this.timer);
@@ -202,17 +206,25 @@
       const g = this.gates[j],
         code = QP.chCode(R.mg, j);
       const p = {},
-        caught = [];
+        caught = [],
+        saved = [];
       for (const sid of R.alive) {
         const s = this.bySid(sid);
         const l = s && s.pk ? s.pk[code] : undefined;
         if (l !== undefined) p[sid] = l;
-        if (l === undefined || !g.open.includes(l)) caught.push(sid);
+        if (l === undefined || !g.open.includes(l)) {
+          // 숙제 도장이 있으면 엄마가 한 번 봐준다(탈락 안 함, 하트 안 깎임)
+          if (R.stamp.has(sid)) {
+            R.stamp.delete(sid);
+            saved.push(sid);
+          } else caught.push(sid);
+        }
       }
+      R.saved += saved.length;
       for (const sid of caught) R.alive.delete(sid);
       R.caught += caught.length;
       C.hearts = Math.max(0, C.hearts - caught.length);
-      this.ch.res[j] = { p, c: caught };
+      this.ch.res[j] = { p, c: caught, s: saved };
       this.ch.hearts = C.hearts;
       this.net.update(this.path(), { ch: this.ch, cc: this.pubC() });
       // 하트가 다 떨어지면 이 갈림길 공개가 끝난 뒤 미니게임을 끝낸다
@@ -235,7 +247,7 @@
       this.ending = true;
       (this.jT || []).forEach(clearTimeout);
       // 아직 판정 안 된 갈림길(이어 하기 등)은 그냥 넘어간다
-      const res = { mg: C.mg + 1, caught: R ? R.caught : 0, hearts: C.hearts, alive: R ? R.alive.size : 0, n: this.ch ? this.ch.runners.length : 0 };
+      const res = { mg: C.mg + 1, caught: R ? R.caught : 0, saved: R ? R.saved : 0, hearts: C.hearts, alive: R ? R.alive.size : 0, n: this.ch ? this.ch.runners.length : 0 };
       C.log.push(res);
       C.mg++;
       const over = C.hearts <= 0 || C.mg >= c.M || S.endAfter;

@@ -28,6 +28,7 @@
       while (list.length < Math.max(1, this.S.cfg.M | 0)) list.push(...this.r.shuffle([...QP.BOSS_NAMES.keys()]));
       this.S.t.bosses = list.slice(0, Math.max(1, this.S.cfg.M | 0));
       this.S.t.my = {}; // sid → 판 전체 내 데미지
+      this.S.t.klog = []; // 아이별 미니게임 기록(밸런스 보기용, 결과표 엑셀에 나감): [미니게임, 보스, 팀, 번호, 형, 직전 맞힌 수, 무기, 목숨, 맞은 횟수, 격추, 데미지]
     }
     // 이 아이의 형: 'atk' 공격형 | 'def' 수비형
     styleOf(s) {
@@ -179,6 +180,7 @@
       for (const s of this.seatList()) {
         const x = res.find((y) => y.t === s.team) || { d: 0, raw: 0, rank: 0 };
         T.my[s.sid] = (T.my[s.sid] || 0) + (s.bdmg || 0);
+        (T.klog = T.klog || []).push([T.mg, boss, s.team, s.num, this.styleOf(s) === 'def' ? 'd' : 'a', s.blk || 0, s.lv || 1, s.bhp || 1, s.bhit || 0, s.bdown ? 1 : 0, s.bdmg || 0]);
         ops.push({ path: this.path('players/' + s.num), data: { dres: { mg: T.mg, d: x.d, raw: x.raw, my: s.bdmg || 0, down: s.bdown ? 1 : 0, hp: s.bhp || 1, hit: s.bhit || 0, rank: x.rank, n: res.length, boss, kind: this.styleOf(s) } }, merge: true });
         s.blk = 0;
       }
@@ -207,6 +209,33 @@
     finOf(s) {
       const x = this.teamBoard().find((y) => y.t === s.team) || {};
       return { rank: x.rank || 0, tot: x.tot || 0, k: 0, nOk: s.nOk, nAns: s.nAns, n: this.nTeams() };
+    }
+    // 결과표 엑셀: 원래 표 + 보스 슈팅 기록(아이별·미니게임별) + 형별 요약
+    resultsCSV() {
+      const base = super.resultsCSV();
+      const T = this.S.t,
+        L = T.klog || [];
+      if (!L.length) return base;
+      const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+      const nick = (num) => (this.S.seats[num] || {}).nick || '';
+      const st = (x) => (x === 'd' ? '수비형' : '공격형');
+      const lines = ['', '보스 슈팅 기록 (판 설정: ' + (this.S.cfg.kind === 'def' ? '모두 수비형' : this.S.cfg.kind === 'atk' ? '모두 공격형' : '아이가 고르기') + ')', '미니게임,보스,팀,번호,별명,형,직전 맞힌 수,무기 단계,목숨,맞은 횟수,격추,데미지'];
+      for (const [mg, boss, team, num, k, blk, lv, hp, hit, dn, dmg] of L) lines.push([mg, esc(QP.BOSS_NAMES[boss]), esc(QP.teamName(T.order[team])), num, esc(nick(num)), st(k), blk, lv, hp, hit, dn ? '격추' : '', dmg].join(','));
+      // 형별 요약: 맞힌 수마다 평균 데미지·격추율
+      lines.push('', '형별 요약 (미니게임 한 번 기준),,,,,', '형,직전 맞힌 수,몇 번,평균 데미지,격추율');
+      for (const k of ['a', 'd'])
+        for (let b = 0; b <= 9; b++) {
+          const xs = L.filter((x) => x[4] === k && Math.min(5, x[5]) === b);
+          if (!xs.length) continue;
+          const avg = Math.round(xs.reduce((n, x) => n + x[10], 0) / xs.length);
+          const dn = Math.round((100 * xs.filter((x) => x[9]).length) / xs.length);
+          lines.push([st(k), b >= 5 ? '5+' : b, xs.length, avg, dn + '%'].join(','));
+        }
+      for (const k of ['a', 'd']) {
+        const xs = L.filter((x) => x[4] === k);
+        if (xs.length) lines.push([st(k) + ' 전체', '', xs.length, Math.round(xs.reduce((n, x) => n + x[10], 0) / xs.length), Math.round((100 * xs.filter((x) => x[9]).length) / xs.length) + '%'].join(','));
+      }
+      return base + '\n' + lines.join('\n');
     }
     results() {
       const R = super.results();

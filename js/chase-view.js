@@ -51,7 +51,9 @@
       }
       return moms[i];
     };
-    ART = { SYM, ROCK, XS, FLAG, HEART, mom };
+    // 숙제 도장(빨간 동그라미 + ✓)
+    const STAMP = PX.make(['..rrrrr..', '.rwwwwwr.', 'rwwwwwwkr', 'rwwwwwkwr', 'rwkwwkwwr', 'rwwkkwwwr', 'rwwwkwwwr', '.rwwwwwr.', '..rrrrr..'], { r: '#d93a2f', w: '#fff6e8', k: '#d93a2f' }, '#7a1e18');
+    ART = { SYM, ROCK, XS, FLAG, HEART, mom, STAMP, STAMPURL: STAMP.toDataURL() };
     return ART;
   }
   const hash = (s) => {
@@ -69,6 +71,7 @@
       '<div class="cmap"><canvas></canvas><div class="clabs"></div>' +
       '<div class="chud"><div class="cbox chearts"><img alt="" src="' + A.HEART + '"><small>우리 반</small><b class="hn"></b><small class="hx"></small><span class="hm"></span></div>' +
       '<div class="cbox cstep">갈림길 <b class="sn"></b> / <span class="sx"></span></div>' +
+      (TV ? '' : '<div class="cbox cstamp" hidden><img alt="" src="' + A.STAMPURL + '"><span>숙제 도장</span></div>') +
       '<div class="cbox ctimer"><span>고르기</span><b class="tn"></b>초<span class="bar"><i></i></span></div></div>' +
       '<div class="cintro" hidden><div class="n"></div><p>엄마가 쫓아와요! 맵을 보고 <b>뚫린 길</b>을 골라요</p></div>' +
       (TV ? '<div class="cbox cfoot"></div>' : '') +
@@ -137,7 +140,7 @@
       const rv = $('.res');
       rv.hidden = !res;
       rv.className = 'res ' + (res === 'ok' ? 'ok' : 'no');
-      rv.innerHTML = res === 'ok' ? '<b>통과!</b><p>다음 갈림길도 맵을 잘 봐요</p>' : res === 'bump' ? '<b>쿵!</b><p>' + (myPick === undefined ? '시간 안에 못 골랐어요' : '막힌 길이었어요') + '… 엄마가 와요!</p>' : res === 'out' ? '<b>엄마한테 잡혔어요</b><p>다음 미니게임에서 다시 도망가요 · 친구들을 응원해요!</p>' : res === 'wait' ? '<b>두근두근…</b><p>어느 길이 뚫렸을까요?</p>' : res === 'end' ? '<b>도착!</b><p>엄마를 따돌렸어요! TV를 봐요</p>' : '';
+      rv.innerHTML = res === 'saved' ? '<b>휴, 살았다!</b><p>숙제 도장을 보여 줬더니 엄마가 "어머, 다 했구나~ 놀다 와!"</p>' : res === 'ok' ? '<b>통과!</b><p>다음 갈림길도 맵을 잘 봐요</p>' : res === 'bump' ? '<b>쿵!</b><p>' + (myPick === undefined ? '시간 안에 못 골랐어요' : '막힌 길이었어요') + '… 엄마가 와요!</p>' : res === 'out' ? '<b>엄마한테 잡혔어요</b><p>다음 미니게임에서 다시 도망가요 · 친구들을 응원해요!</p>' : res === 'wait' ? '<b>두근두근…</b><p>어느 길이 뚫렸을까요?</p>' : res === 'end' ? '<b>도착!</b><p>엄마를 따돌렸어요! TV를 봐요</p>' : '';
     }
     if (pad)
       pad.addEventListener('pointerdown', (e) => {
@@ -182,7 +185,7 @@
       if (!G || !G.ch || !G.cfg) return;
       const cfg = G.cfg,
         ch = G.ch;
-      const times = QP.chTimes(cfg);
+      const times = QP.chTimes(cfg, ch.mg);
       const gates = ch._gates && ch._seed === ch.seed ? ch._gates : ((ch._seed = ch.seed), (ch._gates = QP.chGates(ch.seed, cfg)));
       const t = (o.now() - ch.t0) / QP.ms(1);
       // 지금 갈림길과 단계
@@ -225,7 +228,8 @@
           const k = kidOf(r, roster.indexOf(r));
           if (!k.showInit) {
             k.showInit = true;
-            k.ok = !res.c.includes(r.sid);
+            k.saved = !!(res.s && res.s.includes(r.sid)); // 숙제 도장으로 봐줌
+            k.ok = !res.c.includes(r.sid) && !k.saved;
             k.lane = res.p[r.sid] !== undefined ? res.p[r.sid] : hash(r.sid + j) % 4;
             k.ty = laneY(k.lane) + 3 + ((hash(r.sid) % 5) - 2);
             k.tx = k.ok ? 360 : RXX - 8;
@@ -258,7 +262,7 @@
             if (k.hx === undefined) (k.hx = k.tx), (k.hy = k.ty);
             k.x = k.hx - v * 14;
             k.y = k.hy - Math.sin(v * Math.PI) * 6;
-          } else if (u < 3.6) {
+          } else if (u < 3.6 || k.saved) {
             if (k.hx === undefined) (k.hx = k.tx), (k.hy = k.ty);
             k.x = k.hx - 14;
             k.y = k.hy;
@@ -327,6 +331,7 @@
       for (const e of els.values()) e.used = false;
       const list = [];
       let caughtN = 0,
+        savedN = 0,
         passN = 0,
         bubLane = {};
       for (const r of alive) {
@@ -334,12 +339,12 @@
         const showing = ph === 'show' || ph === 'done';
         const u = showing ? (ph === 'done' ? 9 : pt) - k.delay : -1;
         const caught = showing && !k.ok && u >= 0.7;
-        if (showing) k.ok ? passN++ : caughtN++;
-        if (showing && !k.ok && u > 4.8) continue; // 퇴장
+        if (showing) k.ok ? passN++ : k.saved ? savedN++ : caughtN++;
+        if (showing && !k.ok && !k.saved && u > 4.8) continue; // 퇴장
         if (showing && k.ok && k.x > W + 10) continue;
         let f = md(T * (ph === 'choose' ? 6 : 10) + k.ph, 4);
         if (caught) f = u < 1.05 ? 4 : 0;
-        const bow = caught && u > 2.3 && u < 3.6 ? md(T * 6, 2) : 0;
+        const bow = caught && u > 2.3 && u < (k.saved ? 3.0 : 3.6) ? md(T * 6, 2) : 0;
         list.push({
           y: k.y,
           f: () => {
@@ -355,7 +360,8 @@
                 g.fillStyle = '#ffe36a';
                 g.fillRect(Math.round(k.x + Math.cos(a) * 6), Math.round(k.y - k.fr[0].height - 2 + Math.sin(a) * 2), 2, 2);
               }
-            if (caught && u > 2.3 && u < 3.6) {
+            if (k.saved && u > 3.0 && u < 4.6) g.drawImage(A.STAMP, Math.round(k.x) - 4, Math.round(k.y) - k.fr[0].height - 12 - (u < 3.2 ? 3 : 0)); // 도장 짠!
+            if (caught && u > 2.3 && u < (k.saved ? 3.0 : 3.6)) {
               g.fillStyle = '#7ac8f0';
               g.fillRect(Math.round(k.x) + 5, Math.round(k.y) - k.fr[0].height + 3, 2, 3);
             }
@@ -367,7 +373,8 @@
             frm = md(T * 8, 2),
             flip = false;
           if (u < 2.3) mx = -16 + ((u - 1.5) / 0.8) * (k.hx - 24 + 16);
-          else if (u < 3.6) (mx = k.hx - 24), (frm = md(T * 5, 2) ? 2 : 0);
+          else if (u < 3.6 || (k.saved && u < 3.9)) (mx = k.hx - 24), (frm = !k.saved || u < 3.0 ? (md(T * 5, 2) ? 2 : 0) : 0);
+          else if (k.saved) (mx = k.hx - 24 - (u - 3.9) * 70), (flip = true); // 엄마 혼자 돌아감
           else (mx = k.x - 10), (flip = true);
           list.push({
             y: k.y + 0.1,
@@ -379,7 +386,8 @@
               g.restore();
             },
           });
-          if (u > 2.3 && u < 3.6 && !bubLane[k.lane]) {
+          if (k.saved && u > 2.3 && u < 3.9) put(el('b' + k.sid, 'cbub' + (u > 3.0 ? ' ok' : ''), u > 3.0 ? '어머, 다 했구나~ 놀다 와!' : '숙제했어?!'), mx, k.y - k.mom[0].height - 2);
+          else if (!k.saved && u > 2.3 && u < 3.6 && !bubLane[k.lane]) {
             bubLane[k.lane] = 1;
             put(el('b' + k.sid, 'cbub', k.scold), mx, k.y - k.mom[0].height - 2);
           }
@@ -407,7 +415,7 @@
       if (ph === 'intro') intro.querySelector('.n').textContent = Math.ceil(-t);
       if (TV) {
         const f = $('.cfoot');
-        const h = (ph === 'show' || ph === 'done') && pt > 0.7 ? '이번 갈림길 · <b class="ok">통과 ' + passN + '</b> · <b class="no">잡힘 ' + caughtN + '</b>' : ph === 'choose' ? '디벗을 보고 뚫린 길을 골라요! · 달리는 친구 <b>' + alive.length + '</b>명' : ph === 'wait' ? '두근두근… 결과 공개!' : '달려라! 엄마가 쫓아와요 · <b>' + alive.length + '</b>명';
+        const h = (ph === 'show' || ph === 'done') && pt > 0.7 ? '이번 갈림길 · <b class="ok">통과 ' + passN + '</b> · <b class="no">잡힘 ' + caughtN + '</b>' + (savedN ? ' · <b class="st">도장으로 살아남 ' + savedN + '</b>' : '') : ph === 'choose' ? '디벗을 보고 뚫린 길을 골라요! · 달리는 친구 <b>' + alive.length + '</b>명' : ph === 'wait' ? '두근두근… 결과 공개!' : '달려라! 엄마가 쫓아와요 · <b>' + alive.length + '</b>명';
         if (f.innerHTML !== h) f.innerHTML = h;
       } else {
         const mine = o.picked(code);
@@ -415,7 +423,12 @@
         let rs = '';
         if (meOut) rs = 'out';
         else if (ph === 'wait') rs = mine === undefined ? 'bump' : 'wait';
-        else if (ph === 'show' || ph === 'done') rs = meK && meK.showInit ? (meK.ok ? 'ok' : pt - meK.delay > 2.3 ? 'out' : 'bump') : '';
+        else if (ph === 'show' || ph === 'done') rs = meK && meK.showInit ? (meK.ok ? 'ok' : meK.saved ? (pt - meK.delay > 3.0 ? 'saved' : 'bump') : pt - meK.delay > 2.3 ? 'out' : 'bump') : '';
+        // 아직 안 쓴 숙제 도장
+        let used = false;
+        for (let i = 0; i <= j; i++) if (ch.res && ch.res[i] && ch.res[i].s && ch.res[i].s.includes(o.me) && (i < j || ph === 'show' || ph === 'done')) used = true;
+        const sb = $('.cstamp');
+        if (sb) sb.hidden = !(ch.stamp && ch.stamp.includes(o.me)) || used || meOut;
         if (rs === 'bump' && ph === 'wait') rs = 'wait';
         drawPad(gate, code, mine, meOut, rs);
       }

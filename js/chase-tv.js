@@ -53,12 +53,12 @@
       const got = ref.seatList().filter((s) => s.cur && s.cur.r === S.round);
       head = '<h1>' + S.round + ' / ' + total + '번째 문제</h1>';
       sub = (ph === 'question' ? '문제 푸는 중 <b>' + left + '</b>초 · 답한 친구 ' + got.filter((s) => s.ans).length + ' / ' + got.length : '정답 보는 중') + ' · ' + (k ? '엄마 피해 도망가기까지 <b>' + k + '</b>문제' : '이제 <b>엄마 피해 도망가기!</b> 디벗을 봐요');
-      body = '<p class="lbl">우리 반 하트</p>' + hearts + '<p class="hint">반 전체가 한 팀! 엄마한테 잡힌 친구 한 명마다 하트가 하나 줄어요</p>';
+      body = '<p class="lbl">우리 반 하트</p>' + hearts + '<p class="hint">반 전체가 한 팀! 엄마한테 잡힌 친구 한 명마다 하트가 하나 줄어요<br>문제를 ' + QP.chStampN(c) + '개 넘게 맞히면 숙제 도장 → 잡혀도 한 번 봐줘요</p>';
     } else if (ph === 'cres') {
       const d = C.log[C.log.length - 1] || {};
       head = '<h1>엄마 피해 도망가기 ' + d.mg + '번째 결과</h1>';
       sub = C.hearts <= 0 ? '하트가 다 떨어졌어요…' : C.mg >= c.M ? '곧 최종 결과!' : '다음 문제까지 <b>' + left + '</b>초';
-      body = '<p class="lbl">우리 반 하트</p>' + hearts + '<p class="hint">끝까지 도망간 친구 <b>' + d.alive + '</b>명 / ' + d.n + '명 · 엄마한테 잡힌 친구 ' + d.caught + '명</p>';
+      body = '<p class="lbl">우리 반 하트</p>' + hearts + '<p class="hint">끝까지 도망간 친구 <b>' + d.alive + '</b>명 / ' + d.n + '명 · 엄마한테 잡힌 친구 ' + d.caught + '명' + (d.saved ? ' · 숙제 도장으로 살아남 ' + d.saved + '명' : '') + '</p>';
     } else if (ph === 'end') {
       const over = C.hearts <= 0,
         st = QP.chStars(C.hearts, c.hearts);

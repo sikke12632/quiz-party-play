@@ -68,7 +68,7 @@
         cfg = c.game.cfg;
       b.ran = L.mg;
       const gates = QP.chGates(L.seed, cfg),
-        times = QP.chTimes(cfg);
+        times = QP.chTimes(cfg, L.mg);
       const skill = Math.min(0.98, b.acc + 0.25);
       gates.forEach((g, j) => {
         const tm = times[j];

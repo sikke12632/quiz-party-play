@@ -16,7 +16,8 @@
     M: 3,
     NJ: 6,
     hearts: 30,
-    times: [4, 3.6, 3.2, 3, 2.7, 2.5], // 갈림길마다 고르는 시간
+    times: [3, 3, 3, 3, 3, 3], // 갈림길마다 고르는 시간(2026-11-06 담임: 5초면 너무 쉽고 3초가 적당)
+    tLast: 2, // 마지막 미니게임은 갈림길마다 2초
     open: [2, 2, 2, 1, 1, 1], // 뚫린 길 수
     tQ: 20,
     tReveal: 4,
@@ -25,10 +26,13 @@
     tWait: 1.0, // 고르기 끝 → 공개(늦게 온 답을 기다림. 교실 측정 왕복 0.23~0.4초)
     tShow: 5.1,
     tResult: 7,
+    stampN: 4, // 숙제 도장: 직전 묶음에서 이만큼 맞히면 그 미니게임에서 한 번 봐줌(2026-11-06 담임 「C만 하자」)
     minutes: 99,
   };
   QP.CH_SCOLD = ['숙제 했어?!', '학원 가야지!', '방 치웠어?!', '밥 먹어야지!', '양치했어?!', '게임 그만!'];
   QP.chCode = (mg, j) => 1000 + mg * 10 + j;
+  // 숙제 도장 기준: stampN 개(문제 묶음이 짧으면 「하나 빼고 다」)
+  QP.chStampN = (cfg) => Math.min(cfg.stampN || 4, Math.max(1, (cfg.per || 5) - 1));
 
   // 미니게임 하나의 갈림길들(모든 기기가 같은 씨앗으로 같은 것을 만든다)
   QP.chGates = function (seed, cfg) {
@@ -42,12 +46,13 @@
     }
     return out;
   };
-  // 갈림길 시간표(초, 미니게임 시작 t0 기준): [{run, ch0, ch1, show, end}]
-  QP.chTimes = function (cfg) {
+  // 갈림길 시간표(초, 미니게임 시작 t0 기준): [{run, ch0, ch1, show, end}]. mg = 미니게임 번호(마지막 미니게임은 tLast초)
+  QP.chTimes = function (cfg, mg) {
+    const last = mg !== undefined && cfg.tLast && mg >= (cfg.M || 3) - 1;
     const out = [];
     let t = 0;
     for (let j = 0; j < cfg.NJ; j++) {
-      const T = cfg.times[j] || cfg.times[cfg.times.length - 1];
+      const T = last ? cfg.tLast : cfg.times[j] || cfg.times[cfg.times.length - 1];
       const x = { run: t, ch0: t + cfg.tRun, ch1: t + cfg.tRun + T };
       x.show = x.ch1 + cfg.tWait;
       x.end = x.show + cfg.tShow;

@@ -520,7 +520,7 @@
       return (
         '<div class="center hello thello"><img class="bigdoll pxi" src="' + cIcon(144) + '" alt=""><h2>나는 <b>' + esc(s.nick) + '</b></h2>' +
         '<p class="tline"><b>우리 반 전체가 한 팀</b>이에요 · 지금 ' + (C.game.roster || []).length + '명</p>' +
-        '<p>문제 ' + c.per + '개를 풀 때마다 <b>엄마 피해 도망가기</b>를 해요.<br>맵을 보고 뚫린 길의 모양을 재빨리 눌러요! 우리 반 하트 ' + c.hearts + '개를 지켜요.</p></div>'
+        '<p>문제 ' + c.per + '개를 풀 때마다 <b>엄마 피해 도망가기</b>를 해요.<br>맵을 보고 뚫린 길의 모양을 재빨리 눌러요! 우리 반 하트 ' + c.hearts + '개를 지켜요.<br>문제를 ' + QP.chStampN(c) + '개 넘게 맞히면 <b>숙제 도장</b>! 엄마한테 잡혀도 한 번 봐줘요.</p></div>'
       );
     if (ph === 'question') return scGame();
     if (ph === 'reveal') {
@@ -529,6 +529,8 @@
       return (
         '<div class="center tres ' + (res.ok ? 'ok' : 'no') + '">' + (res.ok ? '<div class="ok-badge">맞았어요!</div>' : '<div class="no-badge">' + (res.my === null ? '시간이 다 됐어요' : '아쉬워요') + '</div>') +
         (!res.ok ? (res.my !== null ? '<div class="my">내 답: ' + esc(res.my) + '</div>' : '') + '<div class="ans' + (String(res.ans).length > 6 ? ' long' : '') + '">정답은 <b>' + esc(res.ans) + '</b></div>' + (res.exp ? '<div class="exp">' + esc(res.exp) + '</div>' : '') : '') +
+        // 숙제 도장: 이번 묶음에서 stampN 개 맞히면 엄마가 한 번 봐준다
+        (((n) => '<div class="tpow cst"><span>숙제 도장</span>' + (res.blk >= n ? '<b>받았어요!</b>' : '<b>' + (res.blk || 0) + ' / ' + n + '</b><small>개 맞히면</small>') + '</div>')(QP.chStampN(c))) +
         '<p class="tnext">' + (res.left === 0 ? '이제 <b>엄마 피해 도망가기</b>! 디벗을 꼭 봐요' : '엄마 피해 도망가기까지 <b>' + res.left + '</b>문제') + '</p></div>'
       );
     }
@@ -539,7 +541,7 @@
       return (
         '<div class="center tres dres"><p class="lbl">엄마 피해 도망가기 ' + d.mg + '번째</p>' +
         '<div class="rk">' + (over ? '우리 반 하트가 다 떨어졌어요…' : '우리 반 하트 <b>' + d.hearts + '</b>개 남았어요') + '</div>' +
-        '<p class="sub">끝까지 도망간 친구 <b>' + d.alive + '</b>명 / ' + d.n + '명 · 엄마한테 잡힌 친구 ' + d.caught + '명</p>' +
+        '<p class="sub">끝까지 도망간 친구 <b>' + d.alive + '</b>명 / ' + d.n + '명 · 엄마한테 잡힌 친구 ' + d.caught + '명' + (d.saved ? ' · 숙제 도장으로 살아남 ' + d.saved + '명' : '') + '</p>' +
         '<p class="tvnote">' + (over ? '곧 끝나요. TV를 봐요' : d.mg >= c.M ? '곧 최종 결과!' : '다음 문제에서 또 만나요. 다음엔 모두 다시 달려요!') + '</p></div>'
       );
     }
