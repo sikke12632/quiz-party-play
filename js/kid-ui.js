@@ -57,7 +57,7 @@
   function phaseTotal() {
     const c = C.game.cfg,
       ph = C.phase;
-    return ph === 'question' ? qTime() : { dres: c.tResult, chest: c.tChest, reveal: c.tReveal, result: c.tResult + (C.mafia && mp().rollEnd ? c.tRoll || 0 : 0), vote: c.tVote, show: c.tShow }[ph] || 1;
+    return ph === 'question' ? qTime() : { dres: c.tResult, cres: c.tResult, chest: c.tChest, reveal: c.tReveal, result: c.tResult + (C.mafia && mp().rollEnd ? c.tRoll || 0 : 0), vote: c.tVote, show: c.tShow }[ph] || 1;
   }
   function qTime() {
     const q = C.mafia ? C.game.q : C.seat && C.seat.q;
@@ -70,10 +70,12 @@
 
   function viewKey() {
     if (!C) return 'boot';
+    if (C.screen === 'seat' && C.game && C.game.closed) return 'closed';
     const sc = C.screen;
     if (sc !== 'seat') return sc + '|' + (C.err || '') + '|' + (sc === 'busy' ? C.num : '');
     if (C.mafia) return 'M|' + mafiaKey();
     if (C.treasure) return 'T|' + trKey();
+    if (C.chase) return 'C|' + chKey();
     const ph = C.phase,
       r = C.round;
     if (ph === 'lobby') return 'lobby|' + (C.seat && C.seat.nick);
@@ -294,6 +296,17 @@
       key = '';
     }
     if (inDef) return (key = k);
+    // 엄마 피해 도망가기 미니게임: 위 맵·아래 단추 화면을 붙여 둔다
+    const inCh = C && C.chase && C.screen === 'seat' && C.phase === 'chase';
+    if (inCh && !cview) {
+      $app.innerHTML = lastHTML = '';
+      cview = QP.ChaseView.mount($app, { game: () => C.game, now: () => C.net.now(), me: C.seat.sid, pick: (code, l) => C.pickLane(code, l), picked: (code) => (C.sent.pk ? C.sent.pk[code] : undefined) });
+    } else if (!inCh && cview) {
+      cview.unmount();
+      cview = null;
+      key = '';
+    }
+    if (inCh) return (key = k);
     if (k === key) return tickOnly();
     const prevKey = key;
     key = k;
@@ -306,8 +319,10 @@
     else if (C.screen === 'busy') h = '<div class="center card"><h2>' + C.num + '번은 이미 들어와 있어요</h2><p>내 번호가 맞으면 선생님께 말해 주세요.<br>선생님이 넘겨주면 바로 들어가요.</p><div class="row"><button class="ghost" data-act="renum">다른 번호 고르기</button></div></div>';
     else if (C.screen === 'otherTab') h = '<div class="center card"><h2>다른 탭에서 하고 있어요</h2><p>이 탭에서 계속하려면 눌러요.</p><div class="row"><button class="go" data-act="claim">여기서 할래요</button></div></div>';
     else if (C.screen === 'otherDevice') h = '<div class="center card"><h2>다른 기기에서 이어서 하고 있어요</h2><p>이 기기는 쉬어도 돼요.</p></div>';
+    else if (C.screen === 'seat' && C.game && C.game.closed) h = '<div class="center card"><h2>선생님이 판을 닫았어요</h2><p>새 입장 번호로 다시 들어와요.</p><div class="row"><button class="go" data-act="restart">처음으로</button></div></div>';
     else if (C.screen === 'gone') h = '<div class="center card"><h2>판이 없어졌어요</h2><div class="row"><button class="go" data-act="restart">처음으로</button></div></div>';
     else if (C.treasure) h = trTop() + scTreasure();
+    else if (C.chase) h = chTop() + scChase();
     else if (C.mafia) h = mTopbar() + ((b) => b + (!mBoard && !/dgrid/.test(b) && ['result', 'vote', 'show'].includes(C.phase) ? cluesHTML() : ''))(scMafia()) + (mBoard ? boardHTML() : '') + (mRole ? roleHTML() : '');
     else h = topbar() + scGame();
     // 내용이 같으면 다시 그리지 않는다(다시 그리는 순간 누른 손가락이 사라지지 않게)
@@ -357,7 +372,7 @@
     const g = document.getElementById('goldN');
     if (g && C.seat) g.textContent = fmt(C.seat.gold);
     // 선생님 화면이 멈췄는지: 마감이 6초 넘게 지났는데 그대로
-    const stuck = C.game && ['question', 'chest', 'reveal', 'result', 'vote', 'show', 'defend', 'dres'].includes(C.phase) && C.game.endsAt && C.net.now() - C.game.endsAt > QP.ms(6);
+    const stuck = C.game && ['question', 'chest', 'reveal', 'result', 'vote', 'show', 'defend', 'dres', 'chase', 'cres'].includes(C.phase) && C.game.endsAt && C.net.now() - C.game.endsAt > QP.ms(6);
     document.getElementById('net').hidden = !stuck;
     if (C.mafia && C.phase === 'result' && viewKey() !== key) render(); // 지목권 뽑기가 끝나면 화면을 바꾼다
   }
@@ -453,6 +468,83 @@
       return (
         '<div class="center endcard"><img class="bigdoll pxi" src="' + tIcon(144) + '" alt=""><h1 class="t">' + tname + ' ' + v.rank + '등!</h1>' +
         '<p class="sum">지킨 하트 ' + v.tot + '개 · 물리친 적 ' + v.k + '마리 · 내가 맞힌 문제 ' + v.nOk + '개</p><p>' + (v.rank === 1 ? '와, 우리 팀이 1등이에요!' : '수고했어요! TV를 봐요.') + '</p></div>'
+      );
+    }
+    return '';
+  }
+
+  /* ================= 엄마 피해 도망가기 (작업/결정-괴물도망.md) ================= */
+  let cview = null;
+  const cIcon = (size) => PX.icon(QP.TEAM_ANIMALS[(C.seat && C.seat.a) || 0][0], (C.seat && C.seat.cl) || 0, size);
+  function chKey() {
+    const ph = C.phase,
+      r = C.round,
+      s = C.seat || {};
+    if (ph === 'lobby') return 'lobby|' + s.nick + '|' + (C.game.roster || []).length;
+    if (ph === 'question') return 'q|' + r + '|' + (C.myQ() ? C.myQ().id : 'none') + '|' + (C.sent.a === r ? 'sent' : '');
+    if (ph === 'reveal') return 'rv|' + r + '|' + (C.myRes() ? 1 : 0);
+    if (ph === 'chase') return 'ch|' + (C.game.ch ? C.game.ch.mg : '');
+    if (ph === 'cres') return 'cres|' + (C.game.cres ? C.game.cres.mg : '');
+    if (ph === 'end') return 'end|' + (s.fin ? 1 : 0);
+    return ph;
+  }
+  function chTop() {
+    const s = C.seat || {},
+      ph = C.phase,
+      c = C.game.cfg,
+      cc = C.game.cc || {};
+    if (s.a === undefined) return '';
+    const total = c.per * c.M;
+    const label = { question: '문제', reveal: '정답', cres: '결과' }[ph];
+    return (
+      '<div class="topbar tr"><div class="me"><img class="pxi" src="' + cIcon(48) + '" alt=""><span><small>나는</small> <b>' + esc(s.nick) + '</b></span></div>' +
+      '<div class="tchip">우리 반 ' + PX.heart(true) + ' <b>' + (cc.hearts === undefined ? c.hearts : cc.hearts) + '</b></div>' +
+      '<div class="spacer"></div>' +
+      (C.round ? '<div class="rd">' + Math.min(C.round, total) + ' / ' + total + '문제</div>' : '') +
+      (label ? '<div class="timer"><span>' + label + '</span> <b id="tN">' + Math.ceil(C.timeLeft()) + '</b>초 <span class="bar"><i id="tB" style="width:' + Math.round((100 * C.timeLeft()) / (phaseTotal() || 1)) + '%"></i></span></div>' : '') +
+      '</div>'
+    );
+  }
+  function scChase() {
+    const ph = C.phase,
+      s = C.seat || {},
+      c = C.game.cfg,
+      cc = C.game.cc || {};
+    if (s.a === undefined) return '<div class="center"><div class="spin"></div></div>';
+    if (ph === 'lobby')
+      return (
+        '<div class="center hello thello"><img class="bigdoll pxi" src="' + cIcon(144) + '" alt=""><h2>나는 <b>' + esc(s.nick) + '</b></h2>' +
+        '<p class="tline"><b>우리 반 전체가 한 팀</b>이에요 · 지금 ' + (C.game.roster || []).length + '명</p>' +
+        '<p>문제 ' + c.per + '개를 풀 때마다 <b>엄마 피해 도망가기</b>를 해요.<br>맵을 보고 뚫린 길의 모양을 재빨리 눌러요! 우리 반 하트 ' + c.hearts + '개를 지켜요.</p></div>'
+      );
+    if (ph === 'question') return scGame();
+    if (ph === 'reveal') {
+      const res = C.myRes();
+      if (!res) return '<div class="center card"><h2>다음 문제부터 해요</h2><p>조금만 기다려요.</p></div>';
+      return (
+        '<div class="center tres ' + (res.ok ? 'ok' : 'no') + '">' + (res.ok ? '<div class="ok-badge">맞았어요!</div>' : '<div class="no-badge">' + (res.my === null ? '시간이 다 됐어요' : '아쉬워요') + '</div>') +
+        (!res.ok ? (res.my !== null ? '<div class="my">내 답: ' + esc(res.my) + '</div>' : '') + '<div class="ans' + (String(res.ans).length > 6 ? ' long' : '') + '">정답은 <b>' + esc(res.ans) + '</b></div>' + (res.exp ? '<div class="exp">' + esc(res.exp) + '</div>' : '') : '') +
+        '<p class="tnext">' + (res.left === 0 ? '이제 <b>엄마 피해 도망가기</b>! 디벗을 꼭 봐요' : '엄마 피해 도망가기까지 <b>' + res.left + '</b>문제') + '</p></div>'
+      );
+    }
+    if (ph === 'cres') {
+      const d = C.game.cres;
+      if (!d) return '<div class="center"><div class="spin"></div></div>';
+      const over = d.hearts <= 0;
+      return (
+        '<div class="center tres dres"><p class="lbl">엄마 피해 도망가기 ' + d.mg + '번째</p>' +
+        '<div class="rk">' + (over ? '우리 반 하트가 다 떨어졌어요…' : '우리 반 하트 <b>' + d.hearts + '</b>개 남았어요') + '</div>' +
+        '<p class="sub">끝까지 도망간 친구 <b>' + d.alive + '</b>명 / ' + d.n + '명 · 엄마한테 잡힌 친구 ' + d.caught + '명</p>' +
+        '<p class="tvnote">' + (over ? '곧 끝나요. TV를 봐요' : d.mg >= c.M ? '곧 최종 결과!' : '다음 문제에서 또 만나요. 다음엔 모두 다시 달려요!') + '</p></div>'
+      );
+    }
+    if (ph === 'end') {
+      const v = s.fin;
+      if (!v) return '<div class="center"><div class="spin"></div></div>';
+      return (
+        '<div class="center endcard"><img class="bigdoll pxi" src="' + cIcon(144) + '" alt=""><h1 class="t">' + (v.over ? '게임 오버!' : '우리 반 성공!') + '</h1>' +
+        (v.over ? '' : '<p class="stars">' + [1, 2, 3].map((i) => '<span class="' + (i <= v.stars ? 'on' : '') + '">★</span>').join('') + '</p>') +
+        '<p class="sum">남은 하트 ' + v.hearts + ' / ' + v.max + ' · 내가 맞힌 문제 ' + v.nOk + '개</p><p>' + (v.over ? '엄마한테 너무 많이 잡혔어요. 다음 판에 다시 도망가요!' : '모두 엄마를 따돌렸어요! TV를 봐요.') + '</p></div>'
       );
     }
     return '';

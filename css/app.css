@@ -723,3 +723,69 @@ img.pxi { image-rendering: pixelated; border-radius: 4px; }
 .trtv .endbtns { position: absolute; bottom: 24px; display: flex; gap: 14px; }
 .tintro[hidden] { display: none; }
 .trtv .endbtns { left: 50%; transform: translateX(-50%); }
+
+/* ================= 엄마 피해 도망가기 (도트, 작업/결정-괴물도망.md) ================= */
+.topbar.tr .tchip .pxh { width: 22px; height: 20px; vertical-align: -3px; }
+.topbar.tr .tchip b { font-family: 'QPTitle', serif; font-weight: normal; color: var(--red); font-size: 22px; }
+.endcard .stars, .chtv .stars { margin: 4px 0; font-size: 56px; letter-spacing: 8px; }
+.endcard .stars span, .chtv .stars span { color: rgba(90,70,54,.22); }
+.endcard .stars span.on, .chtv .stars span.on { color: #ffc93e; text-shadow: 3px 3px 0 #a8791e; }
+.chv { position: fixed; inset: 0; background: #2f5a3a; overflow: hidden; touch-action: none; z-index: 1; }
+.chv .cmap { position: absolute; left: 0; right: 0; top: 0; overflow: hidden; }
+.chv canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.chv .clabs { position: absolute; inset: 0; pointer-events: none; }
+.chud { position: absolute; left: 12px; right: 12px; top: 10px; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+.cbox { background: var(--cream); border: 3px solid #4a3828; border-radius: 6px; box-shadow: 4px 4px 0 rgba(20,10,30,.45); display: flex; align-items: center; gap: 8px; padding: 4px 14px; }
+.chearts b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 30px; color: var(--red); }
+.chearts small { font-size: 15px; color: var(--brown); }
+.chearts img { width: 30px; image-rendering: pixelated; }
+.chearts .hm { font-family: 'QPTitle', serif; font-size: 26px; color: var(--red); margin-left: 4px; }
+.cstep { margin: 0 auto; font-size: 17px; color: var(--brown); }
+.cstep b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 26px; color: var(--ink); }
+.ctimer { font-size: 16px; color: var(--brown); }
+.ctimer b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 28px; color: var(--ink); min-width: 22px; text-align: center; }
+.ctimer .bar { width: 120px; height: 12px; background: rgba(90,70,54,.18); }
+.ctimer .bar i { display: block; height: 100%; background: #e0a93a; }
+.ctimer.hurry .bar i { background: var(--red); }
+.clab { position: absolute; transform: translate(-50%, -100%); font-family: 'QPTitle', serif; font-size: 16px; background: var(--red); color: #fff; padding: 0 9px; border: 2px solid #7a1e18; border-radius: 4px; white-space: nowrap; }
+.ckung { position: absolute; transform: translate(-50%, -100%); font-family: 'QPTitle', serif; font-size: 30px; color: #fff; -webkit-text-stroke: 2px #4a2a1e; text-shadow: 3px 3px 0 #4a2a1e; white-space: nowrap; }
+.cbub { position: absolute; transform: translate(-30%, -100%); background: #fff; border: 3px solid #4a3828; border-radius: 10px; padding: 3px 10px; font-family: 'QPTitle', serif; font-size: 18px; color: #c0392b; white-space: nowrap; box-shadow: 3px 3px 0 rgba(0,0,0,.3); }
+.cbub::after { content: ''; position: absolute; left: 18px; bottom: -11px; border: 6px solid transparent; border-top: 7px solid #4a3828; }
+.chv.tv .cbub { font-size: 22px; } .chv.tv .ckung { font-size: 36px; }
+.cintro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(20,30,20,.4); color: #fff; text-shadow: 3px 3px 0 #1a2a1a; pointer-events: none; }
+.cintro[hidden] { display: none; }
+.cintro .n { font-family: 'QPTitle', serif; font-size: 140px; line-height: 1; }
+.cintro p { font-size: 26px; } .cintro b { color: #ffe36a; }
+.cpad { position: absolute; left: 0; right: 0; bottom: 0; background: #2a2038; border-top: 4px solid #4a3828; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.cpad .tip { color: #f3e7ff; font-size: 20px; }
+.cpad .tip b { color: #ffe36a; font-family: 'QPTitle', serif; font-weight: normal; font-size: 24px; }
+.cpad .btns { display: flex; gap: 22px; }
+.cpad button { width: 200px; height: 150px; border: 4px solid #4a3828; border-radius: 10px; background: var(--cream); box-shadow: 6px 6px 0 rgba(0,0,0,.45); display: grid; place-items: center; touch-action: none; padding: 0; }
+.cpad button img { width: 100px; image-rendering: pixelated; pointer-events: none; }
+.cpad button.pick { background: #fff2a8; transform: translate(4px, 4px); box-shadow: 2px 2px 0 rgba(0,0,0,.45); outline: 5px solid #ffd23e; }
+.cpad.done button:not(.pick) { opacity: .35; }
+.cpad .res { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(42,32,56,.92); color: #fff; text-shadow: 3px 3px 0 #120a1c; }
+.cpad .res[hidden] { display: none; }
+.cpad .res b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 60px; }
+.cpad .res p { font-size: 22px; margin: 6px 0 0; }
+.cpad .res.ok b { color: #9be37a; } .cpad .res.no b { color: #ffb08a; }
+.chv.tv .cbox { padding: 6px 20px; }
+.cfoot { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); font-size: 26px; white-space: nowrap; }
+.cfoot b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 34px; }
+.cfoot .ok { color: #2f7a2a; } .cfoot .no { color: var(--red); }
+/* TV: 문제·결과·끝 */
+.chtv { position: fixed; inset: 0; background: #4f8a3e; z-index: 2; display: flex; flex-direction: column; align-items: center; }
+.chtv .head { text-align: center; padding-top: 22px; color: #fff; text-shadow: 3px 3px 0 #1f3a1a; }
+.chtv .head h1 { margin: 0; font-family: 'QPTitle', serif; font-weight: normal; font-size: 56px; }
+.chtv .head p { margin: 6px 0 0; font-size: 26px; }
+.chtv .head p b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 34px; color: #ffe36a; }
+.chtv .mid { margin-top: 28px; background: #fbf3df; border: 4px solid #4a3828; border-radius: 8px; box-shadow: 8px 8px 0 rgba(20,40,20,.4); padding: 18px 60px 24px; text-align: center; }
+.chtv .lbl { margin: 0; font-family: 'QPTitle', serif; font-size: 30px; color: var(--brown); }
+.chtv .bigh { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.chtv .bigh .pxh { width: 110px; height: 96px; }
+.chtv .bigh b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 120px; color: var(--red); line-height: 1; }
+.chtv .bigh small { font-size: 34px; color: var(--brown); }
+.chtv .hint { font-size: 22px; color: var(--brown); margin: 8px 0 0; }
+.chtv .hint b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 28px; color: var(--ink); }
+.chtv .endbtns { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; }
+.closeg { position: fixed; right: 30px; bottom: 178px; font-size: 18px; padding: 8px 22px; border: 0; border-radius: 999px; background: rgba(251,244,228,.9); color: var(--brown); box-shadow: 0 3px 0 #c9b48f, 0 5px 12px rgba(60,40,20,.2); }

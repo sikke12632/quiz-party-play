@@ -34,6 +34,7 @@
       if (c.screen !== 'seat') return;
       if (c.mafia) return actMafia(b);
       if (c.treasure) walkTreasure(b);
+      if (c.chase) runChase(b);
       const r = c.round, q = c.myQ();
       if (q && b.busy.a !== r) {
         b.busy.a = r;
@@ -57,6 +58,26 @@
         const t = Math.random() < 0.7 ? o.targets[0] : o.targets[Math.floor(Math.random() * o.targets.length)];
         setTimeout(() => c.pickTarget(t), QP.ms(1 + Math.random() * 3));
       }
+    }
+    // 엄마 피해 도망가기 봇: 갈림길마다 고르는 시간 안에 길을 하나 누른다(맞을 확률 = 정답률보다 조금 높게)
+    function runChase(b) {
+      const c = b.c;
+      if (c.phase !== 'chase' || !c.game.ch || b.ran === c.game.ch.mg) return;
+      const L = c.game.ch,
+        cfg = c.game.cfg;
+      b.ran = L.mg;
+      const gates = QP.chGates(L.seed, cfg),
+        times = QP.chTimes(cfg);
+      const skill = Math.min(0.98, b.acc + 0.25);
+      gates.forEach((g, j) => {
+        const tm = times[j];
+        const at = L.t0 + QP.ms(tm.ch0 + 0.3 + Math.random() * (tm.ch1 - tm.ch0 - 0.6));
+        setTimeout(() => {
+          const right = Math.random() < skill;
+          const lanes = [0, 1, 2, 3].filter((l) => right === g.open.includes(l));
+          c.pickLane(QP.chCode(L.mg, j), lanes[Math.floor(Math.random() * lanes.length)]);
+        }, Math.max(0, at - c.net.now()));
+      });
     }
     // 보물 지키기 봇: 미니게임 동안 가까운 적 쪽으로 걷고 위치를 보낸다
     function walkTreasure(b) {

@@ -265,6 +265,19 @@
       this.write({ p });
       return true;
     }
+    /* ---------- 엄마 피해 도망가기 ---------- */
+    get chase() {
+      return !!(this.game && this.game.mode === 'chase');
+    }
+    // 갈림길에서 길 고르기(한 번만)
+    pickLane(code, lane) {
+      if (this.phase !== 'chase' || (this.sent.pk && this.sent.pk[code] !== undefined)) return false;
+      this.sent.pk = this.sent.pk || {};
+      this.sent.pk[code] = lane;
+      this.write({ p: { r: code, x: lane, y: 0 } });
+      this.emit();
+      return true;
+    }
     /* ---------- 도깨비 찾기 ---------- */
     // 이번 라운드에 내게 온 것(자리 문서에서)
     mine(k) {
