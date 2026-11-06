@@ -6,7 +6,7 @@
  *   보스 탄막은 씨앗으로 정해져 모든 기기가 똑같이 셈한다(조준탄만 그 기기의 내 비행기를 노린다).
  *   맞았는지·넣은 데미지는 아이 기기가 직접 센다(서버 위치는 1초 3번이라 선생님 화면이 판정하면 억울한 격추가 생김).
  *   아이 → 자리 문서 b{r:미니게임 번호, x, y, d:내 데미지, k:격추 0/1, h:맞은 횟수}. 선생님 화면은 팀별로 더해 live 로 내보낸다.
- *   두 형: 공격형(atk) = 맞힌 수만큼 무기 단계, 목숨 1 / 수비형(def) = 무기 모두 같음(3단계), 맞힌 수만큼 목숨.
+ *   두 형: 공격형(atk) = 맞힌 수만큼 무기 단계, 목숨 BO.ATK_HP(2) / 수비형(def) = 무기 모두 같음(3단계), 맞힌 수만큼 목숨.
  *     판 설정 kind: 'pick' 아이마다 고름(모이는 곳에서 b{r:-1, k:0 공격형/1 수비형} 를 씀, 시작하면 고정) · 'atk'·'def' 모두 같은 형.
  *     목숨이 남으면 맞아도 BO.INV초 깜빡이며 버티고, 목숨이 다 떨어지면 격추.
  *   팀 점수 = 팀 데미지 ÷ 팀 인원 × 평균 인원(인원이 달라도 공평).
@@ -26,7 +26,7 @@
     tIntro: 3,
     tDefend: 25,
     tResult: 8,
-    kind: 'pick', // 'pick' 아이가 모이는 곳에서 공격형·수비형을 고름(안 고르면 공격형) · 'atk' 모두 공격형(맞힌 수 → 무기 1~5단계, 목숨 1) · 'def' 모두 수비형(무기는 모두 같고 맞힌 수 → 목숨, 0개도 1)
+    kind: 'pick', // 'pick' 아이가 모이는 곳에서 공격형·수비형을 고름(안 고르면 공격형) · 'atk' 모두 공격형(맞힌 수 → 무기 1~5단계, 목숨 2) · 'def' 모두 수비형(무기는 모두 같고 맞힌 수 → 목숨, 0개도 1)
     minutes: 99, // (황금 찾기용 칸)
   };
   QP.BOSS_NAMES = ['먹구름 대왕', '먹물 문어 선장', '태엽 부엉이', '눈보라 눈사람 왕', '꼬마 불꽃 용'];
@@ -56,17 +56,19 @@
   BO.DEF_LV = 3; // 방어력 강화 때 모두가 받는 무기 단계
   BO.INV = 1.6; // 목숨이 줄면 깜빡이며 안 맞는 시간(초)
   // 이번 미니게임 [무기 단계, 목숨]: kind 와 직전 묶음 맞힌 수로
-  QP.boKit = (kind, nOk) => (kind === 'def' ? [BO.DEF_LV, Math.max(1, Math.min(9, nOk | 0))] : [QP.boLevel(nOk), 1]);
+  BO.ATK_HP = 2; // 공격형 목숨 (2026-11-06 담임: 수비형이 너무 좋아 보여서 1 → 2)
+  BO.BIG = 3; // 굵은 탄(4·5단계) 데미지 (담임: 1.5배, 2 → 3)
+  QP.boKit = (kind, nOk) => (kind === 'def' ? [BO.DEF_LV, Math.max(1, Math.min(9, nOk | 0))] : [QP.boLevel(nOk), BO.ATK_HP]);
   // 처음 자리: 아래쪽에 고르게
   QP.boHome = (k, n) => [Math.round(BO.X0 + 14 + ((k + 0.5) / Math.max(1, n)) * (BO.X1 - BO.X0 - 28)), 172 - (k % 2) * 12];
   QP.boClamp = (x, y) => [Math.max(BO.X0, Math.min(BO.X1, x)), Math.max(BO.Y0, Math.min(BO.Y1, y))];
   // 보스 자리(t초, 3·2·1 동안은 음수)
   QP.boBoss = (t) => ({ x: 100 + Math.sin(t * 0.55) * 38, y: 32 + Math.sin(t * 1.3) * 2 });
   QP.boHitBoss = (x, y, b) => ((x - b.x) / 27) ** 2 + ((y - b.y - 2) / 15) ** 2 < 1;
-  // 데미지 상한(초당) — 심판이 이상한 값을 거른다. 5단계 = 6 / 0.17초 ≈ 35
-  QP.boMaxDps = 40;
+  // 데미지 상한(초당) — 심판이 이상한 값을 거른다. 5단계 = 7(1+1+3+1+1) / 0.17초 ≈ 41
+  QP.boMaxDps = 46;
   // 봇·시뮬레이션용 어림 데미지(초당): 단계별 한 번 쏠 때 데미지 × 맞히는 비율
-  QP.boBotDps = (lv) => ([0, 1, 2, 3, 4, 6][lv] / BO.FIRE) * 0.8;
+  QP.boBotDps = (lv) => ([0, 1, 2, 3, 2 + BO.BIG, 4 + BO.BIG][lv] / BO.FIRE) * 0.8;
 
   /* ---------- 보스 탄막 ----------
    * 4가지가 4초씩 돈다: 0 부채꼴 · 1 빙글빙글 · 2 조준탄(내 비행기) · 3 비 내리기.
@@ -148,7 +150,7 @@
   QP.boFire = function (out, x, y, lv, who) {
     for (const [a, off, big] of BO.WEAPON[Math.max(1, Math.min(5, lv))].s) {
       const r = (a * Math.PI) / 180;
-      out.push({ x: x + off, y: y - 7, vx: Math.sin(r) * BO.SHOT_V, vy: -Math.cos(r) * BO.SHOT_V, d: big ? 2 : 1, big, who });
+      out.push({ x: x + off, y: y - 7, vx: Math.sin(r) * BO.SHOT_V, vy: -Math.cos(r) * BO.SHOT_V, d: big ? BO.BIG : 1, big, who });
     }
   };
   // 가짜 아이(봇)용: 미니게임 동안 돌아다니며 어림 데미지를 쌓고 b 를 쓴다. 가끔 격추. (bot-runner.js · 시험)

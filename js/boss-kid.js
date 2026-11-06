@@ -280,7 +280,7 @@
       } else {
         $('.b-weap .b-l1').innerHTML = '내 무기 <b>' + lv + '</b>단계';
         $('.b-weap .b-pips').innerHTML = [1, 2, 3, 4, 5].map((i) => '<i class="' + (i <= lv ? 'b-on' : '') + '"></i>').join('');
-        $('.b-wn').textContent = '모양: ' + BO.WEAPON[lv].name;
+        $('.b-wn').textContent = '모양: ' + BO.WEAPON[lv].name + ' · 목숨 ' + hp + '개';
         $('.b-ww').textContent = '방금 ' + per + '문제 중 ' + nOk + '개 맞힘';
       }
       // 무기 모양 미리 보기
@@ -513,7 +513,7 @@
       // 글자
       lab.style.display = alive ? '' : 'none';
       if (alive) put(lab, me[0], me[1] - 8);
-      const lt = kind === 'def' ? (hitPop > 0 ? '나 -1♥' : '나 ♥' + (hp - hits)) : '나';
+      const lt = kind === 'def' || hp > 1 ? (hitPop > 0 ? '나 -1♥' : '나 ♥' + (hp - hits)) : '나';
       if (lab.textContent !== lt) lab.textContent = lt;
       if (kind === 'def') drawLives();
       popEl.forEach((el, j) => {
@@ -652,7 +652,7 @@
     const on = (st === 'def') === def;
     return (
       '<button class="bspb ' + st + (on ? ' on' : '') + '" data-bs-pick="' + st + '"><span class="ic">' + (st === 'def' ? '🛡️' : '⚔️') + '</span><b>' + (st === 'def' ? '수비형' : '공격형') + '</b>' +
-      '<small>' + (st === 'def' ? '무기는 보통, 맞힌 만큼 <b>목숨</b>이 늘어요' : '맞힌 만큼 <b>무기</b>가 세져요 (목숨 1)') + '</small></button>'
+      '<small>' + (st === 'def' ? '무기는 보통, 맞힌 만큼 <b>목숨</b>이 늘어요' : '맞힌 만큼 <b>무기</b>가 세져요 (목숨 2)') + '</small></button>'
     );
   }
   document.addEventListener('click', (e) => {
