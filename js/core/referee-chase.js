@@ -6,7 +6,7 @@
  * 판 문서 cc:     { per, M, mg(끝난 미니게임 수), hearts, max }
  * 판 문서 ch:     미니게임 중 { mg, seed, t0, runners:[sid], res:{갈림길:{p:{sid:길}, c:[잡힌 sid]}}, hearts }
  * 판 문서 cres:   미니게임 결과 { mg, caught, hearts, alive, n }
- * 자리 문서(그 아이만): a, cl, res{r, ok, my, ans, exp, left}, fin{hearts, stars, over, nOk, nAns}
+ * 자리 문서(그 아이만): an(동물), cl, res{r, ok, my, ans, exp, left}, fin{hearts, stars, over, nOk, nAns}
  * 아이가 쓰는 칸: a{r,v} 답, p{r: chCode(미니게임, 갈림길), x: 고른 길, y: 0}
  */
 (function (root) {
@@ -37,7 +37,7 @@
     // 도트 동물 6 × 옷 색 8 중 안 쓴 것을 무작위로. 3D 모이는 곳 인형도 같은 동물
     newIdentity() {
       const S = this.S;
-      const used = new Set(this.seatList().map((s) => s.a * 10 + s.cl));
+      const used = new Set(this.seatList().map((s) => s.an * 10 + s.cl));
       const free = [];
       for (let a = 0; a < QP.TEAM_ANIMALS.length; a++) for (let cl = 0; cl < 8; cl++) if (!used.has(a * 10 + cl)) free.push([a, cl]);
       const [a, cl] = free.length ? this.r.pick(free) : [this.r.int(6), this.r.int(8)];
@@ -48,18 +48,18 @@
       S.usedAv.push(av);
       S.usedAdj.push(adj);
       const ADJ = root.JK && root.JK.ADJ;
-      this.pending = { a, cl };
+      this.pending = { an: a, cl };
       return { av, adj, nick: (ADJ ? ADJ[adj % ADJ.length] : 'adj' + adj) + ' ' + aname };
     }
     seatDoc(s) {
-      if (s.a === undefined && this.pending) Object.assign(s, this.pending);
+      if (s.an === undefined && this.pending) Object.assign(s, this.pending);
       this.pending = null;
-      return Object.assign(super.seatDoc(s), { a: s.a, cl: s.cl });
+      return Object.assign(super.seatDoc(s), { an: s.an, cl: s.cl }); // an(동물) — a 는 아이 답 칸이라 쓰면 안 된다
     }
     roster() {
       return this.seatList()
         .sort((x, y) => x.num - y.num)
-        .map((s) => ({ sid: s.sid, nick: s.nick, a: s.a, cl: s.cl }));
+        .map((s) => ({ sid: s.sid, nick: s.nick, a: s.an, cl: s.cl }));
     }
     pushRoster() {
       const ro = this.roster();

@@ -475,7 +475,7 @@
 
   /* ================= 엄마 피해 도망가기 (작업/결정-괴물도망.md) ================= */
   let cview = null;
-  const cIcon = (size) => PX.icon(QP.TEAM_ANIMALS[(C.seat && C.seat.a) || 0][0], (C.seat && C.seat.cl) || 0, size);
+  const cIcon = (size) => PX.icon(QP.TEAM_ANIMALS[(C.seat && C.seat.an) || 0][0], (C.seat && C.seat.cl) || 0, size);
   function chKey() {
     const ph = C.phase,
       r = C.round,
@@ -493,7 +493,7 @@
       ph = C.phase,
       c = C.game.cfg,
       cc = C.game.cc || {};
-    if (s.a === undefined) return '';
+    if (s.an === undefined) return '';
     const total = c.per * c.M;
     const label = { question: '문제', reveal: '정답', cres: '결과' }[ph];
     return (
@@ -510,7 +510,7 @@
       s = C.seat || {},
       c = C.game.cfg,
       cc = C.game.cc || {};
-    if (s.a === undefined) return '<div class="center"><div class="spin"></div></div>';
+    if (s.an === undefined) return '<div class="center"><div class="spin"></div></div>';
     if (ph === 'lobby')
       return (
         '<div class="center hello thello"><img class="bigdoll pxi" src="' + cIcon(144) + '" alt=""><h2>나는 <b>' + esc(s.nick) + '</b></h2>' +
@@ -752,6 +752,31 @@
       key = '';
       render();
     } else if (C.screen === 'code' && e.key === 'Enter' && codeBuf.length === 4) C.enter(codeBuf);
+    // 문제 답도 키보드로(2026-11-06 담임): 숫자 답은 숫자·점·지우기·Enter, 보기는 1~4, OX 는 O·X
+    else if (C.screen === 'seat' && C.myQ()) {
+      const sv = document.getElementById('sv');
+      if (sv && document.getElementById('sk')) {
+        const dot = !!document.querySelector('#sk [data-k="."]');
+        if (/^[0-9]$/.test(e.key) || (e.key === '.' && dot)) {
+          if (shortBuf.length < 8) shortBuf += e.key;
+        } else if (e.key === 'Backspace') shortBuf = shortBuf.slice(0, -1);
+        else if (e.key === 'Enter') {
+          if (shortBuf && C.answer(shortBuf)) {
+            C.sent.v = shortBuf;
+            shortBuf = '';
+          }
+        } else return;
+        e.preventDefault();
+        const el = document.getElementById('sv');
+        if (el) el.innerHTML = esc(shortBuf) || '&nbsp;';
+        return;
+      }
+      const q = C.myQ();
+      let v = null;
+      if (q.type === 'ox' && /^[oOxXㅐㅌ]$/.test(e.key)) v = /[oOㅐ]/.test(e.key) ? 'O' : 'X';
+      if (q.type === 'choice' && /^[1-9]$/.test(e.key) && q.ch[+e.key - 1] !== undefined) v = q.ch[+e.key - 1];
+      if (v !== null && C.answer(v)) C.sent.v = v;
+    }
   });
 
   /* ================= 시작 ================= */

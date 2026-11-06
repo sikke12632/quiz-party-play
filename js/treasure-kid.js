@@ -128,7 +128,7 @@
       const team = C.seat.team;
       mates = (C.game.roster || []).filter((x) => x.team === team);
       myK = mates.findIndex((x) => x.sid === C.seat.sid);
-      E = QP.trSchedule(L.seed, L.dur, L.n[team]);
+      E = QP.trSchedule(L.seed, L.dur, L.n[team], L.spd);
       me = QP.trHome(Math.max(0, myK), mates.length);
       vel = [0, 0];
       shown = {};

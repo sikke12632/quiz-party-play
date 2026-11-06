@@ -205,7 +205,8 @@
       const t0 = S.phaseAt + QP.ms(c.tIntro);
       S.endsAt = t0 + QP.ms(c.tDefend);
       const seed = (S.seed + mg * 7919 + 17) >>> 0;
-      const live = { mg, seed, t0, dur: c.tDefend, hearts: c.hearts, n: {}, lv: {}, pos: {}, kills: {}, hits: {}, h: {} };
+      const spd = Math.round((1 + (c.faster === undefined ? 0.15 : c.faster) * mg) * 100) / 100;
+      const live = { mg, seed, t0, spd, dur: c.tDefend, hearts: c.hearts, n: {}, lv: {}, pos: {}, kills: {}, hits: {}, h: {} };
       this.sims = [];
       for (let t = 0; t < this.nTeams(); t++) {
         const kids = this.teamSeats(t);
@@ -214,7 +215,7 @@
         live.kills[t] = [];
         live.hits[t] = [];
         live.h[t] = c.hearts;
-        const E = QP.trSchedule(seed, c.tDefend, n);
+        const E = QP.trSchedule(seed, c.tDefend, n, spd);
         this.sims[t] = { kids, sim: new QP.TrSim(E, kids.map((s) => ({ sid: s.sid, lv: QP.trLevel(s.blk) })), c.hearts) };
         kids.forEach((s, k) => {
           s.lv = QP.trLevel(s.blk);

@@ -21,7 +21,8 @@
     tDefend: 25,
     tResult: 8, // 미니게임 결과
     hearts: 10,
-    foes: 18, // 아이 한 명당 적 수(미니게임마다 10%씩 늘어남) — node tools/sim-treasure.mjs
+    foes: 20, // 아이 한 명당 적 수(미니게임마다 10%씩 늘어남) — node tools/sim-treasure.mjs
+    faster: 0.15, // 미니게임마다 적이 이만큼씩 빨라짐(2026-11-06 담임: 단계가 올라갈수록 빨라지게)
     minutes: 99, // (황금 찾기용 칸)
   };
   // 팀 동물: [이름, dolls.js ANIMALS 번호]
@@ -60,7 +61,9 @@
 
   /* ---------- 적 목록 ---------- */
   // 종류 0 도깨비불(빠름), 1 꼬마 유령(느림), 2 큰 유령(느리고 두 번 맞아야 — 나중에. 지금은 0·1만)
-  QP.trSchedule = function (seed, dur, n) {
+  // spd: 빠르기 배율(뒤 미니게임일수록 빨라짐). 모든 기기가 같은 값을 써야 한다(판 문서 live.spd)
+  QP.trSchedule = function (seed, dur, n, spd) {
+    spd = spd || 1;
     const r = QP.rng(seed);
     n = n || 64;
     const out = [];
@@ -73,7 +76,7 @@
       const t = 0.3 + (w / W) * end + r() * (end / W) * 0.7;
       const k = r() < 0.55 ? 0 : 1;
       const a = r() * Math.PI * 2;
-      const sp = k === 0 ? 1.35 + r() * 0.35 : 0.95 + r() * 0.25;
+      const sp = (k === 0 ? 1.35 + r() * 0.35 : 0.95 + r() * 0.25) * spd;
       const sx = Math.cos(a) * TR.SX,
         sy = Math.sin(a) * TR.SY;
       const L = Math.hypot(sx, sy);

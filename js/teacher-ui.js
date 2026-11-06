@@ -242,6 +242,8 @@
     // 예전에 저장한 돋보기 %는 버린다(2026-11-05 기본값 8→10%)
     if (pf.mafia && pf.mafiaV !== 2) delete pf.mafia.mag;
     const mf = Object.assign({}, QP.MAFIA_CFG, pf.mafia || {});
+    // 보물 지키기 적 많기: 예전에 저장한 값(18)은 버리고 새 기본값으로 (2026-11-06 담임: 18은 쉽다)
+    if (pf.treasure && pf.treasureV !== 2) delete pf.treasure.foes;
     const tf = Object.assign({}, QP.TREASURE_CFG, pf.treasure || {});
     const cf = Object.assign({}, QP.CHASE_CFG, pf.chase || {});
     ITEMS = await buildItems();
@@ -258,7 +260,7 @@
       (MINE_OK === false && !QP.isMock ? '<p class="loc">서버에 아직 저장할 수 없어서 넣은 문제는 이 컴퓨터에만 있어요.</p>' : '') +
       '<div class="tree">' + treeHTML() + '</div></section>' +
       '<section><h3>놀이</h3><div class="seg" id="modeseg">' +
-      [['gold', '황금 찾기'], ['mafia', '도깨비 찾기'], ['treasure', '보물 지키기'], ['chase', '엄마 피해 도망가기']].filter(([v]) => v !== 'chase' || QP.isMock || P.has('chase')).map(([v, n]) => '<label' + ((pf.mode || 'gold') === v ? ' class="on"' : '') + '><input type="radio" name="mode" value="' + v + '"' + ((pf.mode || 'gold') === v ? ' checked' : '') + '> ' + n + '</label>').join('') +
+      [['gold', '황금 찾기'], ['mafia', '도깨비 찾기'], ['treasure', '보물 지키기'], ['chase', '엄마 피해 도망가기']].map(([v, n]) => '<label' + ((pf.mode || 'gold') === v ? ' class="on"' : '') + '><input type="radio" name="mode" value="' + v + '"' + ((pf.mode || 'gold') === v ? ' checked' : '') + '> ' + n + '</label>').join('') +
       '</div>' +
       '<p class="modehelp" data-for="gold">맞히면 상자를 열어 금을 모아요. 순위 경쟁.</p><p class="modehelp" data-for="mafia">모두 같은 문제를 풀고, 맞힌 친구들이 몰래 숨은 도깨비를 찾아요. 말로 하는 건 괜찮고 화면 보여 주기는 안 돼요.</p>' +
       '<p class="modehelp" data-for="treasure">팀 대결. 문제를 몇 개 풀 때마다 디벗에서 <b>보물 지키기</b> 미니게임을 해요. 많이 맞힌 아이일수록 무기가 세져요. TV에는 팀별 하트가 나와요.</p></section>' +
@@ -469,6 +471,7 @@
       mode: (f('mode').find((x) => x.checked) || { value: 'gold' }).value,
     });
     pf.mafiaV = 2;
+    pf.treasureV = 2;
     pf.chase = { hearts: num('cHearts', 30), per: num('cPer', 5), M: num('cM', 3), tQ: num('ctQ', 20) };
     pf.treasure = { teams: num('tTeams', 4), per: num('tPer', 5), M: num('tM', 3), foes: num('tFoes', 22), tQ: num('ttQ', 20), tDefend: num('ttD', 25) };
     pf.mafia = { Q: num('mQ', 12), G: num('mG', 3), H: num('mH', 70), mag: num('mMag', 10) / 100, fake: num('mFake', 25) / 100, limit: num('mLimit', 3), tQ: num('mtQ', 20), tResult: num('mtR', 8), tVote: num('mtV', 10), tShow: num('mtS', 6) };
