@@ -251,7 +251,10 @@
     /* ---------- 보물 지키기 ---------- */
     // 보스 슈팅(boss)은 보물 지키기 흐름(문제·정답·미니게임 defend·결과 dres)을 같이 쓴다
     get treasure() {
-      return !!(this.game && (this.game.mode === 'treasure' || this.game.mode === 'boss'));
+      return !!(this.game && (this.game.mode === 'treasure' || this.game.mode === 'boss' || this.game.mode === 'tug'));
+    }
+    get tug() {
+      return !!(this.game && this.game.mode === 'tug');
     }
     get boss() {
       return !!(this.game && this.game.mode === 'boss');
@@ -267,6 +270,19 @@
       this.lastP = p;
       this.lastPAt = now;
       this.write({ p });
+      return true;
+    }
+    /* ---------- 도깨비 뒤집기 ---------- */
+    get flip() {
+      return !!(this.game && this.game.mode === 'flip');
+    }
+    // 고른 친구들(명단 번호 배열). 마감까지 몇 번이든 바꿀 수 있다 — 0.25초 묶어서 보냄
+    pickFlip(code, list) {
+      if (this.phase !== 'pick') return false;
+      this.sent.fl = { code, list: list.slice() };
+      clearTimeout(this.flT);
+      this.flT = setTimeout(() => this.write({ tg: { r: code, sid: list.map(QP.flChar).join('').slice(0, 12) } }), QP.ms(0.25));
+      this.emit();
       return true;
     }
     /* ---------- 엄마 피해 도망가기 ---------- */

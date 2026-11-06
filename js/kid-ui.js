@@ -57,7 +57,7 @@
   function phaseTotal() {
     const c = C.game.cfg,
       ph = C.phase;
-    return ph === 'question' ? qTime() : { dres: c.tResult, cres: c.tResult, chest: c.tChest, reveal: c.tReveal, result: c.tResult + (C.mafia && mp().rollEnd ? c.tRoll || 0 : 0), vote: c.tVote, show: c.tShow }[ph] || 1;
+    return ph === 'question' ? qTime() : { dres: c.tResult, cres: c.tResult, fres: c.tResult, chest: c.tChest, reveal: c.tReveal, result: c.tResult + (C.mafia && mp().rollEnd ? c.tRoll || 0 : 0), vote: c.tVote, show: c.tShow }[ph] || 1;
   }
   function qTime() {
     const q = C.mafia ? C.game.q : C.seat && C.seat.q;
@@ -76,6 +76,7 @@
     if (C.mafia) return 'M|' + mafiaKey();
     if (C.treasure) return 'T|' + trKey();
     if (C.chase) return 'C|' + chKey();
+    if (C.flip) return 'F|' + flKey();
     const ph = C.phase,
       r = C.round;
     if (ph === 'lobby') return 'lobby|' + (C.seat && C.seat.nick);
@@ -289,7 +290,7 @@
     const inDef = C && C.treasure && C.screen === 'seat' && C.phase === 'defend';
     if (inDef && !tview) {
       $app.innerHTML = lastHTML = '';
-      tview = (C.boss ? QP.BossView : QP.TreasureView).mount($app, C);
+      tview = (C.tug ? QP.TugView : C.boss ? QP.BossView : QP.TreasureView).mount($app, C);
     } else if (!inDef && tview) {
       tview.unmount();
       tview = null;
@@ -307,6 +308,17 @@
       key = '';
     }
     if (inCh) return (key = k);
+    // 도깨비 뒤집기: 뒤집기(눈치게임) 화면을 붙여 둔다
+    const inFl = C && C.flip && C.screen === 'seat' && C.phase === 'pick';
+    if (inFl && !fview) {
+      $app.innerHTML = lastHTML = '';
+      fview = QP.FlipView.mount($app, C);
+    } else if (!inFl && fview) {
+      fview.unmount();
+      fview = null;
+      key = '';
+    }
+    if (inFl) return (key = k);
     if (k === key) return tickOnly();
     const prevKey = key;
     key = k;
@@ -323,6 +335,7 @@
     else if (C.screen === 'gone') h = '<div class="center card"><h2>판이 없어졌어요</h2><div class="row"><button class="go" data-act="restart">처음으로</button></div></div>';
     else if (C.treasure) h = trTop() + scTreasure();
     else if (C.chase) h = chTop() + scChase();
+    else if (C.flip) h = flTop() + scFlip();
     else if (C.mafia) h = mTopbar() + ((b) => b + (!mBoard && !/dgrid/.test(b) && ['result', 'vote', 'show'].includes(C.phase) ? cluesHTML() : ''))(scMafia()) + (mBoard ? boardHTML() : '') + (mRole ? roleHTML() : '');
     else h = topbar() + scGame();
     // 내용이 같으면 다시 그리지 않는다(다시 그리는 순간 누른 손가락이 사라지지 않게)
@@ -372,7 +385,7 @@
     const g = document.getElementById('goldN');
     if (g && C.seat) g.textContent = fmt(C.seat.gold);
     // 선생님 화면이 멈췄는지: 마감이 6초 넘게 지났는데 그대로
-    const stuck = C.game && ['question', 'chest', 'reveal', 'result', 'vote', 'show', 'defend', 'dres', 'chase', 'cres'].includes(C.phase) && C.game.endsAt && C.net.now() - C.game.endsAt > QP.ms(6);
+    const stuck = C.game && ['question', 'chest', 'reveal', 'result', 'vote', 'show', 'defend', 'dres', 'chase', 'cres', 'pick', 'fres'].includes(C.phase) && C.game.endsAt && C.net.now() - C.game.endsAt > QP.ms(6);
     document.getElementById('net').hidden = !stuck;
     if (C.mafia && C.phase === 'result' && viewKey() !== key) render(); // 지목권 뽑기가 끝나면 화면을 바꾼다
   }
@@ -418,7 +431,7 @@
     return (
       '<div class="topbar tr"><div class="me"><img class="pxi" src="' + tIcon(48) + '" alt=""><span><small>나는</small> <b>' + esc(s.nick) + '</b></span></div>' +
       '<div class="tchip">' + esc(QP.teamName(tAnimal())) + '</div>' +
-      (ph !== 'lobby' && ph !== 'end' ? C.boss ? QP.BossScreens.chip(C, tBlk()) : '<div class="wlv">무기 <b>' + lv + '</b>단계 <span class="pips">' + [1, 2, 3, 4, 5].map((i) => '<i class="' + (i <= lv ? 'on' : '') + '"></i>').join('') + '</span></div>' : '') +
+      (ph !== 'lobby' && ph !== 'end' ? C.tug ? QP.TugScreens.chip(C, tBlk()) : C.boss ? QP.BossScreens.chip(C, tBlk()) : '<div class="wlv">무기 <b>' + lv + '</b>단계 <span class="pips">' + [1, 2, 3, 4, 5].map((i) => '<i class="' + (i <= lv ? 'on' : '') + '"></i>').join('') + '</span></div>' : '') +
       '<div class="spacer"></div>' +
       (C.round ? '<div class="rd">' + Math.min(C.round, total) + ' / ' + total + '문제</div>' : '') +
       (label ? '<div class="timer"><span>' + label + '</span> <b id="tN">' + t + '</b>초 <span class="bar"><i id="tB" style="width:' + Math.round((100 * C.timeLeft()) / (phaseTotal() || 1)) + '%"></i></span></div>' : '') +
@@ -432,6 +445,10 @@
     if (s.team === undefined) return '<div class="center"><div class="spin"></div></div>';
     const tname = esc(QP.teamName(tAnimal()));
     // 보스 슈팅: 모이는 곳·정답·결과·끝 화면은 boss-kid.js (문제 화면은 null → 아래 그대로)
+    if (C.tug) {
+      const th = QP.TugScreens.html(C, { tIcon, tname });
+      if (th !== null) return th;
+    }
     if (C.boss) {
       const bh = QP.BossScreens.html(C, { tIcon, tname });
       if (bh !== null) return bh;
@@ -552,6 +569,95 @@
         '<div class="center endcard"><img class="bigdoll pxi" src="' + cIcon(144) + '" alt=""><h1 class="t">' + (v.over ? '게임 오버!' : '우리 반 성공!') + '</h1>' +
         (v.over ? '' : '<p class="stars">' + [1, 2, 3].map((i) => '<span class="' + (i <= v.stars ? 'on' : '') + '">★</span>').join('') + '</p>') +
         '<p class="sum">남은 하트 ' + v.hearts + ' / ' + v.max + ' · 내가 맞힌 문제 ' + v.nOk + '개</p><p>' + (v.over ? '엄마한테 너무 많이 잡혔어요. 다음 판에 다시 도망가요!' : '모두 엄마를 따돌렸어요! TV를 봐요.') + '</p></div>'
+      );
+    }
+    return '';
+  }
+
+  /* ================= 도깨비 뒤집기 (작업/결정-뒤집기.md) ================= */
+  let fview = null,
+    fHold = false;
+  const fIcon = (size) => PX.icon(QP.TEAM_ANIMALS[(C.seat && C.seat.an) || 0][0], (C.seat && C.seat.cl) || 0, size);
+  // 「내 정체 확인」 꾹 누르기(뒤집기 화면 밖에서도)
+  addEventListener('pointerdown', (e) => {
+    if (C && C.flip && e.target.closest && e.target.closest('#app [data-hold]') && !fview) (fHold = true), (key = ''), render();
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'blur']) addEventListener(ev, () => { if (fHold) (fHold = false), (key = ''), render(); });
+  function flKey() {
+    const ph = C.phase,
+      r = C.round,
+      s = C.seat || {};
+    const h = fHold ? 'H' : '';
+    if (ph === 'lobby') return 'lobby|' + s.nick + h;
+    if (ph === 'question') return 'q|' + r + '|' + (C.myQ() ? C.myQ().id : 'none') + '|' + (C.sent.a === r ? 'sent' : '');
+    if (ph === 'reveal') return 'rv|' + r + '|' + (C.myRes() ? 1 : 0) + '|' + ((C.game.fl && C.game.fl.hint && C.game.fl.hint.k) || 0) + h;
+    if (ph === 'pick') return 'pk|' + (C.game.fl ? C.game.fl.code : '');
+    if (ph === 'fres') return 'fr|' + (s.fres ? s.fres.r + String(s.fres.flipped) : '') + h;
+    if (ph === 'end') return 'end|' + (s.fin ? 1 : 0) + h;
+    return ph + h;
+  }
+  function flTop() {
+    const s = C.seat || {},
+      ph = C.phase,
+      c = C.game.cfg;
+    if (s.an === undefined) return '';
+    const total = c.per * c.R;
+    const label = { question: '문제', reveal: '정답', fres: '결과' }[ph];
+    return (
+      '<div class="topbar tr"><div class="me"><img class="pxi" src="' + fIcon(48) + '" alt=""><span><small>나는</small> <b>' + esc(s.nick) + '</b></span></div>' +
+      '<div class="tchip">도깨비 뒤집기</div><div class="spacer"></div>' +
+      (C.round ? '<div class="rd">' + Math.min(C.round, total) + ' / ' + total + '문제</div>' : '') +
+      (label ? '<div class="timer"><span>' + label + '</span> <b id="tN">' + Math.ceil(C.timeLeft()) + '</b>초 <span class="bar"><i id="tB" style="width:' + Math.round((100 * C.timeLeft()) / (phaseTotal() || 1)) + '%"></i></span></div>' : '') +
+      '</div>'
+    );
+  }
+  function confettiKid() {
+    const cs = ['#ffd23e', '#e8504a', '#5fbf55', '#3f9be8', '#b06ad8'];
+    return '<div class="flconf">' + Array.from({ length: 40 }, (_, i) => '<i style="left:' + ((i * 41) % 100) + '%;background:' + cs[i % cs.length] + ';animation-delay:' + ((i * 0.19) % 3).toFixed(2) + 's"></i>').join('') + '</div>';
+  }
+  function scFlip() {
+    const ph = C.phase,
+      s = C.seat || {},
+      c = C.game.cfg,
+      F = C.game.fl || {};
+    if (s.an === undefined) return '<div class="center"><div class="spin"></div></div>';
+    const who = s.role ? '<div class="fwhobox">' + QP.flWho(s.role, fHold, s.fres ? s.fres.now : s.role.o) + '</div>' : '';
+    const hint = F.hint ? '<div class="fhint"><img class="pxi" src="' + QP.flArt().DEV + '"> 악마는 이 <b>' + F.hint.k + '</b>명 중에 있어요! (친구 고를 때 「악마 후보」로 보여요)</div>' : '';
+    if (ph === 'lobby')
+      return (
+        '<div class="center hello thello"><img class="bigdoll pxi" src="' + fIcon(144) + '" alt=""><h2>나는 <b>' + esc(s.nick) + '</b></h2>' +
+        '<p class="tline">시작하면 반은 <b>도깨비</b>, 반은 <b>인간</b>이 돼요. 그중 한 명은 몰래 <b>악마</b>!</p>' +
+        '<p>문제 ' + c.per + '개마다 친구를 뒤집어요. 맞힌 문제 수만큼 표를 받아요(최대 ' + c.maxPick + '표).<br>끝날 때 <b>다수 무리</b>에 있으면 이겨요. 그런데 다수 무리에 <b>악마</b>가 있으면 소수 무리가 이겨요!<br>처음 종족을 끝까지 지키면 <b>★ 끝까지</b> 칭찬도 받아요.</p></div>'
+      );
+    if (ph === 'question') return scGame();
+    if (ph === 'reveal') {
+      const res = C.myRes();
+      if (!res) return '<div class="center card"><h2>다음 문제부터 해요</h2><p>조금만 기다려요.</p></div>';
+      return (
+        '<div class="center tres ' + (res.ok ? 'ok' : 'no') + '">' + who + (res.ok ? '<div class="ok-badge">맞았어요!</div>' : '<div class="no-badge">' + (res.my === null ? '시간이 다 됐어요' : '아쉬워요') + '</div>') +
+        (!res.ok ? (res.my !== null ? '<div class="my">내 답: ' + esc(res.my) + '</div>' : '') + '<div class="ans' + (String(res.ans).length > 6 ? ' long' : '') + '">정답은 <b>' + esc(res.ans) + '</b></div>' : '') +
+        '<div class="tpow"><span>이번 뒤집기 표</span><b>' + Math.min(c.maxPick, res.blk || 0) + '장</b></div>' +
+        '<p class="tnext">' + (res.left === 0 ? '이제 <b>뒤집기!</b> 디벗을 꼭 봐요' : '뒤집기까지 <b>' + res.left + '</b>문제') + '</p>' + hint + '</div>'
+      );
+    }
+    if (ph === 'fres') {
+      const d = s.fres;
+      if (!d) return '<div class="center"><div class="spin"></div></div>';
+      // 종족 이름은 안 보인다(옆에서 보면 들키니까). 바뀌었는지만
+      return (
+        '<div class="center tres dres">' + who + '<div class="rk">' + (d.flipped ? '앗, <b>뒤집혔어요!</b> 지금은 처음' + (d.now === s.role.o ? ' 그대로예요' : '과 반대 종족이에요') : '휴, 이번엔 <b>그대로</b>예요!') + '</div>' +
+        '<p class="sub">「내 정체 확인」을 꾹 누르면 지금 상태가 보여요 · TV에서 반 전체 결과를 봐요</p>' + hint + '</div>'
+      );
+    }
+    if (ph === 'end') {
+      const v = s.fin;
+      if (!v) return '<div class="center"><div class="spin"></div></div>';
+      const A = QP.flArt();
+      const why = v.devil ? (v.win ? '끝까지 다수 무리에 숨어 있었어요!' : '소수 쪽으로 쫓겨났어요…') : v.win ? '우리 ' + QP.FL_SP[v.now] + ' 무리가 이겼어요!' : '우리 ' + QP.FL_SP[v.now] + ' 무리가 아쉽게 졌어요.';
+      const loyal = !v.devil && v.o === v.now ? '<p class="loyal">★ 처음 종족(' + QP.FL_SP[v.o] + ')을 끝까지 지켰어요!</p>' : '';
+      return (
+        '<div class="center endcard' + (v.win ? ' flwinme' : ' fllose') + '">' + (v.win ? confettiKid() : '') + '<img class="bigdoll pxi" src="' + (v.devil ? A.DEV : v.now === 'g' ? A.GOB : A.HUM) + '" alt=""><h1 class="t">' + (v.devil ? (v.win ? '악마 승리!' : '악마 패배…') : v.win ? '이겼다!' : '아쉬워요!') + '</h1>' +
+        '<p class="sum">처음 ' + QP.FL_SP[v.o] + ' → 끝 ' + QP.FL_SP[v.now] + (v.devil ? ' · 사실 너는 악마였어요' : '') + '</p>' + loyal + '<p>' + why + ' TV에서 모두의 결과를 봐요.</p></div>'
       );
     }
     return '';

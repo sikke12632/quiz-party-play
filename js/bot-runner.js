@@ -33,9 +33,11 @@
       const c = b.c;
       if (c.screen !== 'seat') return;
       if (c.mafia) return actMafia(b);
-      if (c.boss) QP.boBotFly(c);
+      if (c.tug) QP.tgBotPlay(c);
+      else if (c.boss) QP.boBotFly(c);
       else if (c.treasure) walkTreasure(b);
       if (c.chase) runChase(b);
+      if (c.flip) runFlip(b);
       const r = c.round, q = c.myQ();
       if (q && b.busy.a !== r) {
         b.busy.a = r;
@@ -58,6 +60,25 @@
         b.busy.tg = r;
         const t = Math.random() < 0.7 ? o.targets[0] : o.targets[Math.floor(Math.random() * o.targets.length)];
         setTimeout(() => c.pickTarget(t), QP.ms(1 + Math.random() * 3));
+      }
+    }
+    // 도깨비 뒤집기 봇: 친구를 무작위로 고르고, 「뒤집혀!」가 뜨면 나를 넣어 되돌린다
+    function runFlip(b) {
+      const c = b.c;
+      if (c.phase !== 'pick' || !c.game.fl || !c.seat) return;
+      const F = c.game.fl,
+        ro = c.game.roster || [];
+      const me = ro.findIndex((x) => x.sid === c.seat.sid);
+      const n = (c.seat.res && c.seat.res.pick) || 0;
+      if (b.fcode !== F.code) {
+        b.fcode = F.code;
+        b.fsaved = false;
+        const others = ro.map((_, i) => i).filter((i) => i !== me).sort(() => Math.random() - 0.5);
+        setTimeout(() => c.pickFlip(F.code, others.slice(0, Math.max(0, n - 1))), QP.ms(1 + Math.random() * 6));
+      } else if (c.seat.fz && c.seat.fz.r === F.code && c.seat.fz.d && !b.fsaved && n > 0 && Math.random() < 0.7) {
+        b.fsaved = true;
+        const list = (c.sent.fl ? c.sent.fl.list : []).filter((i) => i !== me);
+        setTimeout(() => c.pickFlip(F.code, [me].concat(list).slice(0, n)), QP.ms(0.5 + Math.random() * 2));
       }
     }
     // 엄마 피해 도망가기 봇: 갈림길마다 고르는 시간 안에 길을 하나 누른다(맞을 확률 = 정답률보다 조금 높게)
