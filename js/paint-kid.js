@@ -32,6 +32,8 @@
 .ptdef .pt-bot { display: flex; align-items: center; gap: 12px; width: var(--pw); }
 .ptdef .pt-gauge { flex: 1; height: 34px; border: 3px solid #120c1c; border-radius: 6px; background: #3a3348; position: relative; overflow: hidden; }
 .ptdef .pt-gauge i { position: absolute; inset: 0 auto 0 0; transition: width .2s; }
+.ptdef .pt-gauge.warn { animation: ptshake .15s 3; border-color: #c0392b; }
+@keyframes ptshake { 50% { transform: translateX(6px); } }
 .ptdef .pt-gauge span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; text-shadow: 1px 1px 0 #000; }
 .ptdef .pt-bomb { font-family: 'QPTitle', serif; font-size: 24px; padding: 8px 20px; border: 3px solid #120c1c; border-radius: 10px; background: #6b6478; color: #bbb; box-shadow: 3px 3px 0 rgba(0,0,0,.4); cursor: pointer; touch-action: manipulation; white-space: nowrap; }
 .ptdef .pt-bomb.on { background: #ffe36a; color: #2a211b; animation: ptbeat .4s infinite alternate; }
@@ -67,8 +69,8 @@
       '<div class="pt-top"><div class="pt-card pt-team"><img alt=""><div><b></b><br><small></small></div></div><div class="pt-card pt-spd">걸음 <b>1.0</b>배</div>' +
       '<div class="pt-bars"></div><div class="pt-card pt-time">25</div></div>' +
       '<div class="pt-stage"><canvas></canvas></div>' +
-      '<div class="pt-bot"><div class="pt-gauge"><i></i><span></span></div><button class="pt-bomb">🏺 먹물 항아리</button></div>' +
-      '<div class="tpad"><button data-d="u">▲</button><button data-d="l">◀</button><button data-d="r">▶</button><button data-d="d">▼</button></div>' +
+      '<div class="pt-bot"><div class="pt-gauge"><i></i><span></span></div><button class="pt-bomb" tabindex="-1">🏺 먹물 항아리<small style="display:block;font-size:13px;font-family:QPBody,sans-serif">스페이스바</small></button></div>' +
+      '<div class="tpad"><button tabindex="-1" data-d="u">▲</button><button tabindex="-1" data-d="l">◀</button><button tabindex="-1" data-d="r">▶</button><button tabindex="-1" data-d="d">▼</button></div>' +
       '<div class="pt-big"></div>';
     parent.appendChild(root);
     const $ = (s) => root.querySelector(s);
@@ -89,15 +91,18 @@
       if (KEY[e.key]) {
         keys[KEY[e.key]] = 1;
         e.preventDefault();
-      } else if (e.key === ' ' && !e.repeat) {
+      } else if (e.key === ' ' || e.code === 'Space' || e.key === 'Spacebar') {
+        // 스페이스바 = 먹물 항아리 (2026-11-09 담임). 눌린 단추가 대신 받지 않게 먼저 가로챈다
         e.preventDefault();
-        bomb();
+        e.stopPropagation();
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        if (!e.repeat) bomb();
       }
     };
     const ku = (e) => {
       if (KEY[e.key]) keys[KEY[e.key]] = 0;
     };
-    addEventListener('keydown', kd);
+    addEventListener('keydown', kd, true);
     addEventListener('keyup', ku);
     const pad = $('.tpad');
     const held = new Map();
@@ -174,6 +179,8 @@
       seenBm = 0,
       splats = [],
       sentFinal = false,
+      boomAt = -9999,
+      notYet = -9999,
       lastFrame = performance.now();
     function setup(L) {
       mg = L.mg;
@@ -214,7 +221,13 @@
       if (!L || L.kind !== 'paint' || L.mg !== mg || !board) return;
       const gg = gNow(L);
       if (gg < 0 || gg > L.dur) return;
-      if (((L.g && L.g[C.seat.sid]) || 0) < 100) return;
+      const gv = (L.g && L.g[C.seat.sid]) || 0;
+      // 아직 덜 찼거나, 방금 터뜨려서 선생님 화면이 게이지를 0으로 돌리기 전이면
+      if (gv < 100 || performance.now() - boomAt < 1200) {
+        notYet = performance.now();
+        return;
+      }
+      boomAt = performance.now();
       bombs++;
       trail.push([me[0], me[1], me[0], me[1], performance.now(), 1]);
       splats.push({ x: me[0], y: me[1], t0: performance.now(), t: C.seat.team });
@@ -339,7 +352,9 @@
       const gv = (L.g && L.g[C.seat.sid]) || 0;
       $('.pt-gauge i').style.width = gv + '%';
       const full = gv >= 100 && gg >= 0 && gg < L.dur;
-      $('.pt-gauge span').textContent = full ? '먹물 항아리 준비! 누르거나 스페이스바' : '먹물 항아리 ' + gv + '% · 칠할수록 차요';
+      const warn = performance.now() - notYet < 900;
+      $('.pt-gauge span').textContent = full ? '먹물 항아리 준비! 스페이스바를 눌러요' : warn ? '아직 덜 찼어요! ' + gv + '% · 더 칠해요' : '먹물 항아리 ' + gv + '% · 칠할수록 차요';
+      $('.pt-gauge').classList.toggle('warn', warn && !full);
       $('.pt-bomb').classList.toggle('on', full);
       let big = '';
       if (gg < 0) big = '<span class="w">' + Math.ceil(-gg) + '<small>우리 팀 색으로 칠해요! 화살표로 걸어요</small></span>';
@@ -353,7 +368,7 @@
       unmount() {
         gone = true;
         cancelAnimationFrame(raf);
-        removeEventListener('keydown', kd);
+        removeEventListener('keydown', kd, true);
         removeEventListener('keyup', ku);
         removeEventListener('resize', fit);
         root.remove();
