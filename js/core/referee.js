@@ -86,7 +86,7 @@
     static async resume(net, gid, opts) {
       const st = await net.get(G + gid + '/private/state');
       if (!st) throw new Error('판을 찾을 수 없어요');
-      const Cls = st.mode === 'tug' && QP.TugReferee ? QP.TugReferee : st.mode === 'boss' && QP.BossReferee ? QP.BossReferee : st.mode === 'mafia' && QP.MafiaReferee ? QP.MafiaReferee : st.mode === 'treasure' && QP.TreasureReferee ? QP.TreasureReferee : st.mode === 'chase' && QP.ChaseReferee ? QP.ChaseReferee : st.mode === 'flip' && QP.FlipReferee ? QP.FlipReferee : this;
+      const Cls = st.mode === 'paint' && QP.PaintReferee ? QP.PaintReferee : st.mode === 'tug' && QP.TugReferee ? QP.TugReferee : st.mode === 'boss' && QP.BossReferee ? QP.BossReferee : st.mode === 'mafia' && QP.MafiaReferee ? QP.MafiaReferee : st.mode === 'treasure' && QP.TreasureReferee ? QP.TreasureReferee : st.mode === 'chase' && QP.ChaseReferee ? QP.ChaseReferee : st.mode === 'flip' && QP.FlipReferee ? QP.FlipReferee : this;
       const ref = new Cls(net, gid, opts);
       ref.S = st;
       ref.r = QP.rng(st.seed + st.round * 7919 + 1);

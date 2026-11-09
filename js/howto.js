@@ -219,6 +219,36 @@
         },
       ],
     },
+    paint: {
+      name: '색칠 대작전',
+      sub: '팀 대결 · 돌아다니며 땅 칠하기',
+      cards: [
+        {
+          img: 'img/howto/paint-1.jpg',
+          t: '문제를 맞혀서 걸음을 빠르게!',
+          d: '맞힌 만큼 빨리 걸어요. 5문제 다 맞히면 2배!',
+          marks: [{ x: 30, y: 5, r: 5, label: '내 걸음' }],
+        },
+        {
+          img: 'img/howto/paint-2.jpg',
+          t: '붓을 들고 우리 팀 색으로 칠해라!',
+          d: '화살표로 걸으면 지나간 자리가 칠해져요. 남의 색 위에도 덧칠!',
+          marks: [{ x: 90.2, y: 81.3, r: 9, label: '눌러서 걸어요' }],
+        },
+        {
+          img: 'img/howto/paint-3.jpg',
+          t: '먹물 항아리를 터뜨려라!',
+          d: '칠할수록 항아리가 차요. 가득 차면 눌러서 둘레를 한 번에 칠해요.',
+          marks: [{ x: 29, y: 95, r: 5, label: '항아리 게이지' }, { x: 66.5, y: 95, r: 6, label: '가득 차면 눌러요' }],
+        },
+        {
+          img: 'img/howto/paint-4.jpg',
+          t: '가장 넓게 칠한 팀이 1승!',
+          d: '판마다 맵이 바뀌어요. 3판 중 많이 이긴 팀이 우승!',
+          marks: [{ x: 50, y: 14, r: 6, label: '팀별 칠한 %' }],
+        },
+      ],
+    },
   };
   QP.HOWTO = HOWTO;
 
@@ -231,8 +261,8 @@
 .hw-head .n { margin-left: auto; color: #7a6450; font-size: 16px; }
 .hw-x { border: 0; background: none; font-size: 28px; line-height: 1; cursor: pointer; color: #5a4636; padding: 0 0 0 10px; }
 .hw-body { display: flex; flex-direction: column; align-items: center; padding: 12px 18px 6px; gap: 10px; min-height: 0; }
-.hw-pic { position: relative; max-width: 100%; border: 3px solid #3a2a20; border-radius: 8px; overflow: hidden; background: #000; }
-.hw-pic img { display: block; max-width: 100%; max-height: 54vh; }
+.hw-pic { position: relative; flex-shrink: 0; max-width: 100%; border: 3px solid #3a2a20; border-radius: 8px; overflow: hidden; background: #000; }
+.hw-pic img { display: block; max-width: 100%; max-height: min(54vh, calc(96vh - 270px)); } /* 화면이 낮아도 그림 아래가 잘리지 않게(2026-11-09) */
 .hw-mk { position: absolute; transform: translate(-50%, -50%); border: 5px solid #ff4d3a; border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 12px rgba(255,77,58,.8); animation: hw-pulse 1s ease-in-out infinite alternate; pointer-events: none; }
 .hw-mk b { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); white-space: nowrap; background: #ff4d3a; color: #fff; font-family: 'QPTitle', serif; font-weight: normal; font-size: 18px; padding: 1px 10px; border-radius: 6px; box-shadow: 2px 2px 0 rgba(0,0,0,.3); }
 .hw-mk.up b { top: auto; bottom: 100%; transform: translate(-50%, -6px); }
@@ -250,7 +280,7 @@
 /* 전자칠판: 글자 크게 */
 .hw-back.big .hw-card { width: min(96vw, 1500px); }
 .hw-back.big .hw-head h2 { font-size: 34px; } .hw-back.big .hw-head small, .hw-back.big .hw-head .n { font-size: 20px; }
-.hw-back.big .hw-pic img { max-height: 58vh; }
+.hw-back.big .hw-pic img { max-height: min(58vh, calc(96vh - 350px)); }
 .hw-back.big .hw-t { font-size: 56px; } .hw-back.big .hw-d { font-size: 32px; max-width: 1300px; }
 .hw-back.big .hw-mk b { font-size: 24px; }
 .hw-back.big .hw-foot button { font-size: 28px; padding: 8px 30px; }

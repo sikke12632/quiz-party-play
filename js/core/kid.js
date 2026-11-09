@@ -251,7 +251,10 @@
     /* ---------- 보물 지키기 ---------- */
     // 보스 슈팅(boss)은 보물 지키기 흐름(문제·정답·미니게임 defend·결과 dres)을 같이 쓴다
     get treasure() {
-      return !!(this.game && (this.game.mode === 'treasure' || this.game.mode === 'boss' || this.game.mode === 'tug'));
+      return !!(this.game && (this.game.mode === 'treasure' || this.game.mode === 'boss' || this.game.mode === 'tug' || this.game.mode === 'paint'));
+    }
+    get paint() {
+      return !!(this.game && this.game.mode === 'paint');
     }
     get tug() {
       return !!(this.game && this.game.mode === 'tug');

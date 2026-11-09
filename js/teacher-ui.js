@@ -251,6 +251,7 @@
     if (pf.boss && pf.bossV !== 2) delete pf.boss.kind;
     const bf = Object.assign({}, QP.BOSS_CFG, pf.boss || {});
     const gf = Object.assign({}, QP.TUG_CFG, pf.tug || {});
+    const pnf = Object.assign({}, QP.PAINT_CFG, pf.paint || {});
     ITEMS = await buildItems();
     ONLY = pf.only === true; // 담임: OX·숫자 답도 괜찮다(서술형만 아니면) → 기본은 모두 낸다
     // 예전에 고른 것(packs·mine·gen) → 새 모양(sel)
@@ -265,10 +266,11 @@
       (MINE_OK === false && !QP.isMock ? '<p class="loc">서버에 아직 저장할 수 없어서 넣은 문제는 이 컴퓨터에만 있어요.</p>' : '') +
       '<div class="tree">' + treeHTML() + '</div></section>' +
       '<section><h3>놀이</h3><div class="seg" id="modeseg">' +
-      [['gold', '황금 찾기'], ['mafia', '도깨비 찾기'], ['treasure', '보물 지키기'], ['boss', '보스 슈팅'], ['tug', '줄다리기'], ['chase', '엄마 피해 도망가기'], ['flip', '도깨비 뒤집기']].map(([v, n]) => '<label' + ((pf.mode || 'gold') === v ? ' class="on"' : '') + '><input type="radio" name="mode" value="' + v + '"' + ((pf.mode || 'gold') === v ? ' checked' : '') + '> ' + n + '</label>').join('') +
+      [['gold', '황금 찾기'], ['mafia', '도깨비 찾기'], ['treasure', '보물 지키기'], ['boss', '보스 슈팅'], ['tug', '줄다리기'], ['chase', '엄마 피해 도망가기'], ['flip', '도깨비 뒤집기'], ['paint', '색칠 대작전']].map(([v, n]) => '<label' + ((pf.mode || 'gold') === v ? ' class="on"' : '') + '><input type="radio" name="mode" value="' + v + '"' + ((pf.mode || 'gold') === v ? ' checked' : '') + '> ' + n + '</label>').join('') +
       '</div>' +
       '<p class="modehelp" data-for="gold">맞히면 상자를 열어 금을 모아요. 순위 경쟁.</p><p class="modehelp" data-for="mafia">모두 같은 문제를 풀고, 맞힌 친구들이 몰래 숨은 도깨비를 찾아요. 말로 하는 건 괜찮고 화면 보여 주기는 안 돼요.</p>' +
       '<p class="modehelp" data-for="tug">두 팀 대결. 문제를 몇 개 풀 때마다 디벗에서 <b>줄다리기</b>를 해요. 「여·엉·차!」 박자에 맞춰 <b>차!</b>에 눌러요(리듬 게임). 많이 맞힌 아이일수록 힘이 세요. TV에는 줄과 박자표가 나와요.</p>' +
+      '<p class="modehelp" data-for="paint">팀 대결(2~4팀). 문제를 몇 개 풀 때마다 디벗에서 <b>색칠 대작전</b>을 해요. 붓을 들고 돌아다니며 우리 팀 색으로 칠해요. 많이 맞힐수록 빨리 걸어요. 칠한 만큼 「먹물 항아리」가 차서 한 번에 크게 칠해요. 판마다 칠한 넓이가 가장 큰 팀이 1승.</p>' +
       '<p class="modehelp" data-for="boss">팀 대결. 문제를 몇 개 풀 때마다 디벗에서 <b>보스 슈팅</b>을 해요. 비행기로 탄막을 피하며 보스(체력 ∞)에게 데미지를 넣어요. 공격형은 맞힌 만큼 무기가 세지고, 수비형은 무기는 모두 같고 맞힌 만큼 목숨이 늘어요(아이가 시작 전에 고르거나 선생님이 하나로 정해요). TV에는 팀별 데미지가 나와요.</p>' +
       '<p class="modehelp" data-for="treasure">팀 대결. 문제를 몇 개 풀 때마다 디벗에서 <b>보물 지키기</b> 미니게임을 해요. 많이 맞힌 아이일수록 무기가 세져요. TV에는 팀별 하트가 나와요.</p></section>' +
       '<p class="modehelp" data-for="chase">반 전체가 한 팀. 문제를 몇 개 풀 때마다 디벗에서 <b>엄마 피해 도망가기</b>를 해요. 맵을 보고 뚫린 길의 모양을 재빨리 눌러요. 잡힌 친구마다 우리 반 하트가 줄고, 0이 되면 게임 오버.</p>' +
@@ -281,6 +283,10 @@
       '<section class="mafiaopt" data-for="chase"><h3>엄마 피해 도망가기 <small>해 보고 바꿔요</small></h3>' +
       [['cHearts', '우리 반 하트', 10, 80, cf.hearts], ['cPer', '미니게임 사이 문제', 3, 10, cf.per], ['cM', '미니게임 횟수', 1, 5, cf.M]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
       '<br>' + [['ctQ', '문제', 10, 60, cf.tQ]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '">초</label>').join('') +
+      '</section>' +
+      '<section class="mafiaopt" data-for="paint"><h3>색칠 대작전 <small>처음 해 보는 모드 — 해 보고 바꿔요. 판마다 맵이 바뀌어요(빈 광장 → 상자 광장 → 연못 길)</small></h3>' +
+      [['pTeams', '팀 수', 2, 4, pnf.teams], ['pPer', '미니게임 사이 문제', 3, 10, pnf.per], ['pM', '미니게임 횟수', 1, 5, pnf.M]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
+      '<br>' + [['ptQ', '문제', 10, 60, pnf.tQ], ['ptD', '미니게임', 15, 40, pnf.tDefend]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '">초</label>').join('') +
       '</section>' +
       '<section class="mafiaopt" data-for="tug"><h3>줄다리기 <small>해 보고 바꿔요</small></h3>' +
       [['gPer', '미니게임 사이 문제', 3, 10, gf.per], ['gM', '미니게임 횟수', 1, 5, gf.M], ['gtQ', '문제(초)', 10, 60, gf.tQ]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
@@ -499,6 +505,7 @@
     pf.flip = { R: num('fR', 4), per: num('fPer', 5), maxPick: num('fPick', 3), tChoose: num('fCh', 15), tQ: num('ftQ', 20) };
     pf.chase = { hearts: num('cHearts', 30), per: num('cPer', 5), M: num('cM', 3), tQ: num('ctQ', 20) };
     pf.tug = { per: num('gPer', 5), M: num('gM', 3), tQ: num('gtQ', 20) };
+    pf.paint = { teams: num('pTeams', 4), per: num('pPer', 5), M: num('pM', 3), tQ: num('ptQ', 20), tDefend: num('ptD', 25) };
     pf.bossV = 2;
     pf.boss = { kind: (f('bKind').find((x) => x.checked) || { value: 'pick' }).value, teams: num('bTeams', 4), per: num('bPer', 5), M: num('bM', 3), tQ: num('btQ', 20), tDefend: num('btD', 25) };
     pf.treasure = { teams: num('tTeams', 4), per: num('tPer', 5), M: num('tM', 3), foes: num('tFoes', 22), tQ: num('ttQ', 20), tDefend: num('ttD', 25) };
@@ -535,10 +542,11 @@
         trs = pf.mode === 'treasure',
         bss = pf.mode === 'boss',
         tgs = pf.mode === 'tug',
+        pts = pf.mode === 'paint',
         chs = pf.mode === 'chase',
         fls = pf.mode === 'flip';
-      const Cls = tgs ? QP.TugReferee : mafia ? QP.MafiaReferee : bss ? QP.BossReferee : trs ? QP.TreasureReferee : chs ? QP.ChaseReferee : fls ? QP.FlipReferee : QP.Referee;
-      ref = await Cls.create(net, { cfg: tgs ? Object.assign({ mode: 'tug' }, pf.tug) : mafia ? Object.assign({ mode: 'mafia' }, pf.mafia) : bss ? Object.assign({ mode: 'boss' }, pf.boss) : trs ? Object.assign({ mode: 'treasure' }, pf.treasure) : chs ? Object.assign({ mode: 'chase' }, pf.chase) : fls ? Object.assign({ mode: 'flip' }, pf.flip) : pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
+      const Cls = pts ? QP.PaintReferee : tgs ? QP.TugReferee : mafia ? QP.MafiaReferee : bss ? QP.BossReferee : trs ? QP.TreasureReferee : chs ? QP.ChaseReferee : fls ? QP.FlipReferee : QP.Referee;
+      ref = await Cls.create(net, { cfg: pts ? Object.assign({ mode: 'paint' }, pf.paint) : tgs ? Object.assign({ mode: 'tug' }, pf.tug) : mafia ? Object.assign({ mode: 'mafia' }, pf.mafia) : bss ? Object.assign({ mode: 'boss' }, pf.boss) : trs ? Object.assign({ mode: 'treasure' }, pf.treasure) : chs ? Object.assign({ mode: 'chase' }, pf.chase) : fls ? Object.assign({ mode: 'flip' }, pf.flip) : pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
           stepName = s;
           stepAt = Date.now();
           err.textContent = '판을 만드는 중… (' + s + ')';
@@ -579,12 +587,14 @@
     if (ph === 'lobby' && QP.TreasureTV) QP.TreasureTV.hide();
     if (ph === 'lobby' && QP.BossTV) QP.BossTV.hide();
     if (ph === 'lobby' && QP.TugTV) QP.TugTV.hide();
+    if (ph === 'lobby' && QP.PaintTV) QP.PaintTV.hide();
     if (ph !== 'lobby' && QP.Howto && document.getElementById('hw-back')) QP.Howto.close();
     if (ph === 'lobby' && QP.ChaseTV) QP.ChaseTV.hide();
     if (ph === 'lobby' && QP.FlipTV) QP.FlipTV.hide();
     if (ph === 'lobby') return scLobby();
     if (S.mode === 'mafia') return ph === 'end' ? scMafiaEnd() : scMafia();
     if (S.mode === 'tug') return scTug();
+    if (S.mode === 'paint') return scPaint();
     if (S.mode === 'boss') return scBoss();
     if (S.mode === 'treasure') return scTreasure();
     if (S.mode === 'chase') return scChase();
@@ -614,7 +624,7 @@
       qr.make();
       const url = joinURL().replace(/^https?:\/\//, '').replace(/[a-z]+\.html\?c=\d+.*$/, '');
       $ui.innerHTML =
-        '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips">' + (ref.S.mode === 'mafia' ? '<span class="chip mode maf">도깨비 찾기</span><span class="chip">' + ref.S.cfg.Q + '문제</span>' : ref.S.mode === 'flip' ? '<span class="chip mode trs">도깨비 뒤집기</span><span class="chip">' + ref.S.cfg.R + '라운드 · 문제 ' + ref.S.cfg.per + '개마다 · 비밀 종족 + 악마</span>' : ref.S.mode === 'chase' ? '<span class="chip mode trs">엄마 피해 도망가기</span><span class="chip">반 전체 한 팀 · 하트 ' + ref.S.cfg.hearts + ' · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : ref.S.mode === 'tug' ? '<span class="chip mode trs">줄다리기</span><span class="chip">두 팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : ref.S.mode === 'boss' ? '<span class="chip mode trs">보스 슈팅</span><span class="chip">' + (ref.S.cfg.kind === 'def' ? '모두 수비형' : ref.S.cfg.kind === 'atk' ? '모두 공격형' : '아이가 공격형·수비형 고르기') + ' · ' + ref.nTeams() + '팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : ref.S.mode === 'treasure' ? '<span class="chip mode trs">보물 지키기</span><span class="chip">' + ref.nTeams() + '팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : '<span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>') +
+        '<div class="tv-title"><h1>우리반 퀴즈 파티</h1><div class="chips">' + (ref.S.mode === 'mafia' ? '<span class="chip mode maf">도깨비 찾기</span><span class="chip">' + ref.S.cfg.Q + '문제</span>' : ref.S.mode === 'flip' ? '<span class="chip mode trs">도깨비 뒤집기</span><span class="chip">' + ref.S.cfg.R + '라운드 · 문제 ' + ref.S.cfg.per + '개마다 · 비밀 종족 + 악마</span>' : ref.S.mode === 'chase' ? '<span class="chip mode trs">엄마 피해 도망가기</span><span class="chip">반 전체 한 팀 · 하트 ' + ref.S.cfg.hearts + ' · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : ref.S.mode === 'paint' ? '<span class="chip mode trs">색칠 대작전</span><span class="chip">' + ref.nTeams() + '팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '판</span>' : ref.S.mode === 'tug' ? '<span class="chip mode trs">줄다리기</span><span class="chip">두 팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : ref.S.mode === 'boss' ? '<span class="chip mode trs">보스 슈팅</span><span class="chip">' + (ref.S.cfg.kind === 'def' ? '모두 수비형' : ref.S.cfg.kind === 'atk' ? '모두 공격형' : '아이가 공격형·수비형 고르기') + ' · ' + ref.nTeams() + '팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : ref.S.mode === 'treasure' ? '<span class="chip mode trs">보물 지키기</span><span class="chip">' + ref.nTeams() + '팀 · 문제 ' + ref.S.cfg.per + '개마다 · ' + ref.S.cfg.M + '번</span>' : '<span class="chip mode">황금 찾기</span><span class="chip">' + ref.S.cfg.minutes + '분</span>') +
         (ref.S.range ? '<span class="chip' + (ref.S.test ? ' test' : '') + '">' + esc(ref.S.range) + '</span>' : ref.S.packTitles.map((t) => '<span class="chip' + (/시험용/.test(t) ? ' test' : '') + '">' + esc(t) + '</span>').join('')) + '</div></div>' +
         '<div class="joinbox"><div class="lab">입장 번호</div><div class="code">' + ref.S.code.split('').map((c) => '<i>' + c + '</i>').join('') + '</div><div class="qr">' + qr.createImgTag(4, 0) + '</div><div class="url">디벗으로 <b>QR</b>을 찍거나<br>주소창에 <b>' + esc(url) + '</b></div></div>' +
         '<div class="count">들어온 친구 <b id="n">0</b> 명</div><button class="start" id="go">시작!</button><button class="closeg" id="closeg">판 닫고 새로 만들기</button>' +
@@ -643,6 +653,7 @@
         if (QP.TreasureTV) QP.TreasureTV.hide();
         if (QP.BossTV) QP.BossTV.hide();
         if (QP.TugTV) QP.TugTV.hide();
+        if (QP.PaintTV) QP.PaintTV.hide();
         if (QP.ChaseTV) QP.ChaseTV.hide();
         screen = '';
         scSetup();
@@ -868,6 +879,29 @@
       },
       onNew: () => {
         QP.BossTV.hide();
+        saved.set(null);
+        ref.stop();
+        ref = null;
+        showRes = false;
+        $tools.innerHTML = '';
+        scSetup();
+      },
+    });
+    tools();
+  }
+  /* ================= 색칠 대작전 TV (paint-tv.js, 작업/결정-색칠.md) ================= */
+  function scPaint() {
+    if (screen !== 'paint') {
+      screen = 'paint';
+      tv().setView('lobby');
+    }
+    QP.PaintTV.draw($ui, ref, {
+      onResults: () => {
+        showRes = true;
+        drawResults();
+      },
+      onNew: () => {
+        QP.PaintTV.hide();
         saved.set(null);
         ref.stop();
         ref = null;
@@ -1109,7 +1143,7 @@
   function tools() {
     if (!ref) return;
     const S = ref.S;
-    let h = '<div class="tbtns"><button class="mini" data-t="att">출석판' + (ref.alerts.length ? ' <i class="dot"></i>' : '') + '</button>' + (S.phase !== 'lobby' && S.phase !== 'end' ? (S.endAfter || S.endEarly ? '<button class="mini endbtn" disabled>이번 문제 뒤에 끝나요</button>' : '<button class="mini endbtn" data-t="end">' + (S.mode === 'treasure' ? '이번 보물 지키기까지 하고 끝내기' : S.mode === 'tug' ? '이번 줄다리기까지 하고 끝내기' : S.mode === 'boss' ? '이번 보스 슈팅까지 하고 끝내기' : S.mode === 'flip' ? '이번 뒤집기까지 하고 끝내기' : S.mode === 'chase' ? '이번 도망가기까지 하고 끝내기' : '이번 문제까지 하고 끝내기') + '</button>') : '') + '</div>';
+    let h = '<div class="tbtns"><button class="mini" data-t="att">출석판' + (ref.alerts.length ? ' <i class="dot"></i>' : '') + '</button>' + (S.phase !== 'lobby' && S.phase !== 'end' ? (S.endAfter || S.endEarly ? '<button class="mini endbtn" disabled>이번 문제 뒤에 끝나요</button>' : '<button class="mini endbtn" data-t="end">' + (S.mode === 'treasure' ? '이번 보물 지키기까지 하고 끝내기' : S.mode === 'tug' ? '이번 줄다리기까지 하고 끝내기' : S.mode === 'paint' ? '이번 색칠까지 하고 끝내기' : S.mode === 'boss' ? '이번 보스 슈팅까지 하고 끝내기' : S.mode === 'flip' ? '이번 뒤집기까지 하고 끝내기' : S.mode === 'chase' ? '이번 도망가기까지 하고 끝내기' : '이번 문제까지 하고 끝내기') + '</button>') : '') + '</div>';
     for (const a of ref.alerts) h += '<div class="alert">' + a.num + '번 자리에 다른 기기가 들어오려 해요 <button class="mini" data-hand="' + a.num + '" data-uid="' + a.uid + '">넘겨주기</button><button class="mini" data-dis="' + a.num + '" data-uid="' + a.uid + '">무시</button></div>';
     if (showAtt) {
       h += '<div class="att"><h3>출석판 <small>TV에 번호가 보여요. 다 보면 닫아요</small><button class="mini" data-t="att">닫기</button></h3><div class="attgrid">';

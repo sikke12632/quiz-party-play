@@ -25,6 +25,7 @@
       const net = QP.mockNet(QP.mockStore, { uid: 'bot-' + i, latency: [60, 200] });
       const b = { i, acc: 0.4 + Math.random() * 0.55, speed: 3 + Math.random() * 10, busy: {}, num: nums[i] };
       b.c = new QP.KidClient(net, { onUpdate: () => act(b) });
+      setInterval(() => b.c.paint && b.c.phase === 'defend' && QP.ptBotPlay(b.c), QP.ms(0.1)); // 색칠: 소식이 없어도 걷기
       bots.push(b);
       b.c.enter(code).then(() => b.c.join(b.num));
       await QP.sleep(150);
@@ -33,7 +34,8 @@
       const c = b.c;
       if (c.screen !== 'seat') return;
       if (c.mafia) return actMafia(b);
-      if (c.tug) QP.tgBotPlay(c);
+      if (c.paint) QP.ptBotPlay(c);
+      else if (c.tug) QP.tgBotPlay(c);
       else if (c.boss) QP.boBotFly(c);
       else if (c.treasure) walkTreasure(b);
       if (c.chase) runChase(b);
