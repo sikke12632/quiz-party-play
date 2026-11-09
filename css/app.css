@@ -909,3 +909,8 @@ img.pxi { image-rendering: pixelated; border-radius: 4px; }
 @keyframes flhop2 { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-26px) rotate(6deg); } }
 .flwinme .t { color: #e0a93a; text-shadow: 3px 3px 0 #7a4a00; }
 .fllose .bigdoll { filter: grayscale(.4); transform: rotate(-6deg); }
+
+/* 놀이 방법 단추(아이 모이는 곳) */
+.howbtn { position: fixed; right: 14px; bottom: 14px; z-index: 50; font-family: 'QPTitle', serif; font-size: 20px; padding: 8px 18px; border-radius: 12px; border: 3px solid #3a2a20; background: #fff7e6; color: #2a211b; box-shadow: 3px 3px 0 rgba(0,0,0,.3); cursor: pointer; }
+.tv-howbtn { font-family: 'QPTitle', serif; font-size: 22px; padding: 8px 22px; border-radius: 12px; border: 3px solid #3a2a20; background: #fff7e6; color: #2a211b; box-shadow: 3px 3px 0 rgba(0,0,0,.3); cursor: pointer; }
+.setup .howauto { display: block; margin: 10px 0 4px; }

@@ -338,6 +338,10 @@
     else if (C.flip) h = flTop() + scFlip();
     else if (C.mafia) h = mTopbar() + ((b) => b + (!mBoard && !/dgrid/.test(b) && ['result', 'vote', 'show'].includes(C.phase) ? cluesHTML() : ''))(scMafia()) + (mBoard ? boardHTML() : '') + (mRole ? roleHTML() : '');
     else h = topbar() + scGame();
+    // 판이 시작되면 열어 둔 놀이 방법 카드는 닫는다
+    if (C && C.phase !== 'lobby' && QP.Howto && document.getElementById('hw-back')) QP.Howto.close();
+    // 모이는 곳: 「놀이 방법」 카드 단추(작업/결정-설명페이지.md)
+    if (C && C.screen === 'seat' && C.phase === 'lobby' && C.game && !C.game.closed && QP.Howto && QP.Howto.has(C.game.mode)) h += '<button class="howbtn" data-act="howto">📖 놀이 방법</button>';
     // 내용이 같으면 다시 그리지 않는다(다시 그리는 순간 누른 손가락이 사라지지 않게)
     if (h !== lastHTML || !$app.firstChild) $app.innerHTML = lastHTML = h;
     // 상자 3D: 캔버스는 한 번 만들어 붙였다 뗐다 한다
@@ -814,6 +818,7 @@
     }
     if (d.act === 'claim') return C.claimTab();
     if (d.act === 'restart') return location.reload();
+    if (d.act === 'howto') return QP.Howto && QP.Howto.open(C.game.mode);
     if (d.ans !== undefined) {
       if (C.answer(d.ans)) C.sent.v = d.ans;
       return;

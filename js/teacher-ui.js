@@ -273,6 +273,7 @@
       '<p class="modehelp" data-for="treasure">팀 대결. 문제를 몇 개 풀 때마다 디벗에서 <b>보물 지키기</b> 미니게임을 해요. 많이 맞힌 아이일수록 무기가 세져요. TV에는 팀별 하트가 나와요.</p></section>' +
       '<p class="modehelp" data-for="chase">반 전체가 한 팀. 문제를 몇 개 풀 때마다 디벗에서 <b>엄마 피해 도망가기</b>를 해요. 맵을 보고 뚫린 길의 모양을 재빨리 눌러요. 잡힌 친구마다 우리 반 하트가 줄고, 0이 되면 게임 오버.</p>' +
       '<p class="modehelp" data-for="flip">비밀 종족(도깨비·인간 반반) + 숨은 악마 1명. 문제 몇 개마다 맞힌 수만큼 친구를 뒤집는 눈치게임. 끝날 때 다수 무리가 승리(다수에 악마가 있으면 소수 무리 승리), 처음 종족을 끝까지 지키면 칭찬.</p>' +
+      '<label class="chk howauto"><input type="checkbox" id="howauto"' + (howAuto() ? ' checked' : '') + '> 판을 만들면 <b>놀이 설명</b> 카드를 먼저 보여 주기 <small>(모이는 곳 「놀이 설명」 단추로 언제든 다시 봐요)</small></label>' +
       '<section class="mafiaopt" data-for="flip"><h3>도깨비 뒤집기 <small>해 보고 바꿔요</small></h3>' +
       [['fR', '라운드', 2, 6, ff.R], ['fPer', '라운드 사이 문제', 3, 10, ff.per], ['fPick', '최대 고르기', 1, 5, ff.maxPick]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
       '<br>' + [['fCh', '고르기', 8, 40, ff.tChoose], ['ftQ', '문제', 10, 60, ff.tQ]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '">초</label>').join('') +
@@ -335,6 +336,9 @@
       cb.checked = !(cb.checked && !cb.indeterminate);
       cb.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    document.getElementById('howauto').onchange = (e) => {
+      try { localStorage.setItem('qp_howto_auto', e.target.checked ? '1' : '0'); } catch (er) {}
+    };
     document.getElementById('onlyc').onchange = (e) => {
       ONLY = e.target.checked;
       tree.innerHTML = treeHTML();
@@ -575,6 +579,7 @@
     if (ph === 'lobby' && QP.TreasureTV) QP.TreasureTV.hide();
     if (ph === 'lobby' && QP.BossTV) QP.BossTV.hide();
     if (ph === 'lobby' && QP.TugTV) QP.TugTV.hide();
+    if (ph !== 'lobby' && QP.Howto && document.getElementById('hw-back')) QP.Howto.close();
     if (ph === 'lobby' && QP.ChaseTV) QP.ChaseTV.hide();
     if (ph === 'lobby' && QP.FlipTV) QP.FlipTV.hide();
     if (ph === 'lobby') return scLobby();
@@ -595,6 +600,10 @@
     const page = (QP.preview && QP.preview.kid) || 'index.html';
     return base + page + '?c=' + ref.S.code + (QP.isMock && !QP.preview ? '&mock' : '');
   }
+  let howShown = '';
+  function howAuto() {
+    try { return localStorage.getItem('qp_howto_auto') !== '0'; } catch (e) { return true; }
+  }
   function scLobby() {
     const T = tv();
     if (screen !== 'lobby') {
@@ -609,10 +618,15 @@
         (ref.S.range ? '<span class="chip' + (ref.S.test ? ' test' : '') + '">' + esc(ref.S.range) + '</span>' : ref.S.packTitles.map((t) => '<span class="chip' + (/시험용/.test(t) ? ' test' : '') + '">' + esc(t) + '</span>').join('')) + '</div></div>' +
         '<div class="joinbox"><div class="lab">입장 번호</div><div class="code">' + ref.S.code.split('').map((c) => '<i>' + c + '</i>').join('') + '</div><div class="qr">' + qr.createImgTag(4, 0) + '</div><div class="url">디벗으로 <b>QR</b>을 찍거나<br>주소창에 <b>' + esc(url) + '</b></div></div>' +
         '<div class="count">들어온 친구 <b id="n">0</b> 명</div><button class="start" id="go">시작!</button><button class="closeg" id="closeg">판 닫고 새로 만들기</button>' +
-        (ref.S.mode === 'gold' && QP.showRules ? '<button class="rulesbtn" id="rulesbtn">규칙 설명</button>' : '') +
+        (QP.Howto && QP.Howto.has(ref.S.mode) ? '<button class="rulesbtn" id="rulesbtn">📖 놀이 설명</button>' : '') +
         (ref.S.mode === 'mafia' ? '<div class="classrule">말로 하는 건 괜찮아요 · <b>화면 보여 주기는 안 돼요</b> · 내 인형은 말해도, 거짓말해도 돼요</div>' : '');
       const rb = document.getElementById('rulesbtn');
-      if (rb) rb.onclick = () => QP.showRules(ref.S.mode, ref.S.cfg);
+      if (rb) rb.onclick = () => QP.Howto.open(ref.S.mode, { big: true, cfg: ref.S.cfg });
+      // 판마다 처음 모이는 곳에 들어올 때 한 번 저절로(설정에서 끌 수 있음)
+      if (rb && howAuto() && howShown !== ref.S.code) {
+        howShown = ref.S.code;
+        QP.Howto.open(ref.S.mode, { big: true, cfg: ref.S.cfg, doneLabel: '시작할 준비 끝!' });
+      }
       // 모이는 곳에서 나가기: 이 판을 닫고 판 설정으로(2026-11-06 담임: 대기 화면에서 나갈 방법이 없어)
       document.getElementById('closeg').onclick = async () => {
         if (!confirm('이 판을 닫고 새로 만들까요?\n들어와 있던 친구들은 처음 화면으로 돌아가요.')) return;
