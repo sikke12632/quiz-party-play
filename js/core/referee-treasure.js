@@ -4,7 +4,7 @@
  *
  * 판 문서 tt:     { per, M, mg(끝난 미니게임 수), teams:[{t, n, blk, tot, k}] }  blk = 이번 묶음 맞힌 수 합
  * 판 문서 roster: [{sid, nick, team, cl}]  팀 안 순서 = 팀 번호 k (물리친 기록의 k)
- * 판 문서 live:   미니게임 중 { mg, seed, t0, dur, hearts, n:{팀:적 수}, lv:{sid:단계}, pos:{sid:[x10,y10]}, kills:{팀:[[적,k,때]]}, hits:{팀:[[적,때]]}, h:{팀:하트} }
+ * 판 문서 live:   미니게임 중 { mg, seed, t0, dur, hearts, n:{팀:적 수}, lv:{sid:단계}, pos:{sid:[x10,y10]}, kills:{팀:[[적,k,때]]}, hits:{팀:[[적,때]]}, hurts:{팀:[[적,k,때]] 큰 유령이 쓰러지지 않고 맞음}, spd·big:빠르기·큰 유령 비율, h:{팀:하트} }
  * 자리 문서(그 아이만): team, cl, res{r, ok, my, ans, exp, blk, left}, dres{mg, h, rank, k}, fin{rank, tot, nOk, n}
  * 아이가 쓰는 칸: a{r,v} 답, p{r:미니게임 번호, x, y}(×10 정수) 내 위치
  */
@@ -193,7 +193,7 @@
     /* ================= 보물 지키기 ================= */
     teamFoes(t, mg) {
       const c = this.S.cfg;
-      return Math.round(c.foes * Math.max(1, this.teamSeats(t).length) * (1 + 0.1 * mg));
+      return Math.round(c.foes * Math.max(1, this.teamSeats(t).length) * (1 + (c.foesMore === undefined ? 0.1 : c.foesMore) * mg));
     }
     async startDefend() {
       const S = this.S,
@@ -206,7 +206,8 @@
       S.endsAt = t0 + QP.ms(c.tDefend);
       const seed = (S.seed + mg * 7919 + 17) >>> 0;
       const spd = Math.round((1 + (c.faster === undefined ? 0.15 : c.faster) * mg) * 100) / 100;
-      const live = { mg, seed, t0, spd, dur: c.tDefend, hearts: c.hearts, n: {}, lv: {}, pos: {}, kills: {}, hits: {}, h: {} };
+      const big = Math.round(((c.big || 0) + (c.bigMore || 0) * mg) * 100) / 100;
+      const live = { mg, seed, t0, spd, big, dur: c.tDefend, hearts: c.hearts, n: {}, lv: {}, pos: {}, kills: {}, hits: {}, hurts: {}, h: {} };
       this.sims = [];
       for (let t = 0; t < this.nTeams(); t++) {
         const kids = this.teamSeats(t);
@@ -214,8 +215,9 @@
         live.n[t] = n;
         live.kills[t] = [];
         live.hits[t] = [];
+        live.hurts[t] = [];
         live.h[t] = c.hearts;
-        const E = QP.trSchedule(seed, c.tDefend, n, spd);
+        const E = QP.trSchedule(seed, c.tDefend, n, spd, big);
         this.sims[t] = { kids, sim: new QP.TrSim(E, kids.map((s) => ({ sid: s.sid, lv: QP.trLevel(s.blk) })), c.hearts) };
         kids.forEach((s, k) => {
           s.lv = QP.trLevel(s.blk);
@@ -253,6 +255,7 @@
         const { kids, sim } = this.sims[t];
         L.kills[t] = sim.kills;
         L.hits[t] = sim.hits;
+        if (L.hurts) L.hurts[t] = sim.hurts;
         L.h[t] = sim.h;
         for (const s of kids) L.pos[s.sid] = s.pos.map((v) => Math.round(v * 10));
       }

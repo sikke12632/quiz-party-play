@@ -31,21 +31,23 @@
     PTS: { perfect: 2, good: 1 },
   });
   QP.tgPower = (nOk) => Math.max(1, Math.min(9, nOk | 0));
-  // 박자(초): 1.2초부터, 처음 0.8초마다 → 10초부터 0.6초 → 19초부터 0.4초(막판 스퍼트)
+  // 박자(초): 1.2초부터, 처음 0.8초마다 → 10초부터 0.6초 → 19초부터 0.45초(막판 스퍼트)
   QP.tgBeats = function (dur) {
     const B = [];
     let t = 1.2;
     while (t < dur - 0.2) {
       B.push(Math.round(t * 1000) / 1000);
-      t += t < 10 ? 0.8 : t < 19 ? 0.6 : 0.4;
+      t += t < 10 ? 0.8 : t < 19 ? 0.6 : 0.45; // 막판 0.4 → 0.45초(판정을 후하게, 2026-11-09)
     }
     return B;
   };
   QP.tgGap = (B, i) => B[i] - (i ? B[i - 1] : B[i] - 0.8);
-  // 판정 창: 작은 동그라미(박자 간격의 1/3 앞)보다 좁게
+  // 판정 창: 작은 동그라미(앞 「엉」·뒤 다음 「여」, 박자 간격의 1/3)에 닿지 않는 데까지 넓게
+  // 2026-11-09 담임 "판정을 좀 후하게": 좋아 ±0.15 → 최대 ±0.20초, 완벽 ±0.08 → 최대 ±0.10초
   QP.tgWin = function (B, i) {
-    const good = Math.min(0.15, QP.tgGap(B, i) / 3 - 0.02);
-    return { good, perfect: Math.min(0.08, good * 0.6) };
+    const near = Math.min(QP.tgGap(B, i), i + 1 < B.length ? QP.tgGap(B, i + 1) : 9);
+    const good = Math.min(0.2, near / 3 - 0.02);
+    return { good, perfect: Math.min(0.1, good * 0.6) };
   };
   QP.tgSpurt = (b) => b >= 19;
 

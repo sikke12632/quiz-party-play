@@ -131,6 +131,23 @@
       el.style.top = (y * F) / 200 + 'px';
     };
     const spr = (c, x, y) => g.drawImage(c, Math.round(x - c.width / 2), Math.round(y - c.height / 2));
+    // 맞았을 때 반짝이는 하얀 비행기(2026-11-09 담임: "피격당하는거 이팩트 … 반짝반짝하게")
+    const whites = new WeakMap();
+    const whiteOf = (c) => {
+      let w = whites.get(c);
+      if (!w) {
+        w = document.createElement('canvas');
+        w.width = c.width;
+        w.height = c.height;
+        const wg = w.getContext('2d');
+        wg.drawImage(c, 0, 0);
+        wg.globalCompositeOperation = 'source-in';
+        wg.fillStyle = '#ffffff';
+        wg.fillRect(0, 0, w.width, w.height);
+        whites.set(c, w);
+      }
+      return w;
+    };
 
     /* ---------- 누르기 (보물 지키기와 같은 방식: 손가락을 옆 단추로 밀면 방향이 바뀜) ---------- */
     const keys = { u: 0, d: 0, l: 0, r: 0 };
@@ -202,6 +219,10 @@
       boomed = {},
       booms = [],
       sparks = [],
+      rings = [], // 맞은 자리에 퍼지는 동그라미 {x, y, t, me}
+      mateInv = {}, // 친구 sid → 깜빡임이 끝나는 때
+      mateHit = {}, // 친구 sid → 지금까지 맞은 수(늘면 깜빡임 시작)
+      redT = 0, // 화면 가장자리 빨간 번쩍임 남은 시간
       pops = [],
       popAcc = 0,
       popAt = [100, 40],
@@ -253,6 +274,10 @@
       boomed = {};
       booms = [];
       sparks = [];
+      rings = [];
+      mateInv = {};
+      mateHit = Object.assign({}, L.hit || {});
+      redT = 0;
       pops = [];
       popAcc = 0;
       cd = 0;
@@ -352,6 +377,8 @@
             inv = BO.INV;
             hitPop = 1;
             sparks.push({ x: me[0], y: me[1], t: 0 });
+            rings.push({ x: me[0], y: me[1], t: 0, me: 1 });
+            redT = 0.45;
           }
         }
       }
@@ -394,6 +421,9 @@
       for (const q of pops) q.t += dt;
       while (pops.length && pops[0].t > 0.9) pops.shift();
       for (const s of sparks) s.t += dt;
+      for (const r of rings) r.t += dt;
+      while (rings.length && rings[0].t > 0.5) rings.shift();
+      redT = Math.max(0, redT - dt);
       while (sparks.length && sparks[0].t > 0.6) sparks.shift();
       for (const b of booms) b.t += dt;
     }
@@ -443,6 +473,12 @@
         const k = 0.15;
         s[0] += (p[0] - s[0]) * k;
         s[1] += (p[1] - s[1]) * k;
+        const nh = (L.hit && L.hit[m.sid]) || 0;
+        if (nh > (mateHit[m.sid] || 0) && !(L.dn && L.dn[m.sid])) {
+          mateInv[m.sid] = t + BO.INV;
+          rings.push({ x: s[0], y: s[1], t: 0 });
+        }
+        mateHit[m.sid] = nh;
         if (L.dn && L.dn[m.sid] && !boomed[m.sid]) {
           boomed[m.sid] = 1;
           booms.push({ x: s[0], y: s[1], t: 0, sid: m.sid });
@@ -470,9 +506,35 @@
         const isDown = mine ? !alive : L.dn && L.dn[m.sid];
         const p = mine ? me : shown[m.sid];
         if (!p || isDown) return;
-        if (mine && inv > 0 && md(tt * 10, 2)) return; // 깜빡깜빡
         const fr = A.plane(an, m.cl || 0);
-        spr(fr[md(tt * 12 + k, 2)], p[0], p[1] + md(tt * 5 + k, 2) * 0.5);
+        const pf = fr[md(tt * 12 + k, 2)],
+          py = p[1] + md(tt * 5 + k, 2) * 0.5;
+        // 맞은 뒤 안 맞는 동안: 처음엔 하얗게 번쩍, 그다음 하양·보통·흐림을 번갈아 반짝반짝
+        const left = mine ? inv : Math.max(0, (mateInv[m.sid] || 0) - t);
+        if (left > 0) {
+          const since = BO.INV - left;
+          const ph = md(tt * 14, 3);
+          if (since < 0.18 || ph === 0) spr(whiteOf(pf), p[0], py);
+          else {
+            if (ph === 2) g.globalAlpha = 0.35;
+            spr(pf, p[0], py);
+            g.globalAlpha = 1;
+          }
+          // 둘레를 도는 반짝이 별
+          for (let j = 0; j < 4; j++) {
+            const a = tt * 6 + (j * Math.PI) / 2;
+            const sx2 = Math.round(p[0] + Math.cos(a) * 11),
+              sy2 = Math.round(py + Math.sin(a) * 10);
+            const big = md(tt * 8 + j, 2); // 커졌다 작아졌다
+            g.fillStyle = j % 2 ? '#fff27a' : '#ffffff';
+            g.fillRect(sx2, sy2 - (big ? 2 : 1), 1, big ? 5 : 3);
+            g.fillRect(sx2 - (big ? 2 : 1), sy2, big ? 5 : 3, 1);
+            if (big) {
+              g.fillStyle = '#ffffff';
+              g.fillRect(sx2, sy2, 1, 1);
+            }
+          }
+        } else spr(pf, p[0], py);
         if (mine) {
           g.fillStyle = 'rgba(255,255,255,.9)';
           g.fillRect(Math.round(p[0]) - 1, Math.round(p[1]) - 1, 2, 2);
@@ -509,6 +571,24 @@
       }
       for (const b of bul.list) spr(B.bul[b.k], b.x, b.y);
       for (const s of sparks) spr(window.PX.pop[Math.min(2, Math.floor(s.t / 0.2))], s.x, s.y);
+      // 맞은 자리에 퍼지는 동그라미
+      for (const r of rings) {
+        const u = r.t / 0.5;
+        g.strokeStyle = 'rgba(255,' + (r.me ? 80 : 230) + ',' + (r.me ? 80 : 120) + ',' + (1 - u).toFixed(2) + ')';
+        g.lineWidth = r.me ? 2 : 1;
+        g.beginPath();
+        g.arc(r.x, r.y, 4 + u * (r.me ? 16 : 10), 0, Math.PI * 2);
+        g.stroke();
+      }
+      // 내가 맞으면 화면 가장자리가 빨갛게 번쩍
+      if (redT > 0) {
+        const a = (redT / 0.45) * 0.55;
+        g.fillStyle = 'rgba(255,40,40,' + a.toFixed(2) + ')';
+        g.fillRect(0, 0, 200, 4);
+        g.fillRect(0, 196, 200, 4);
+        g.fillRect(0, 0, 4, 200);
+        g.fillRect(196, 0, 4, 200);
+      }
 
       // 글자
       lab.style.display = alive ? '' : 'none';

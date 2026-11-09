@@ -103,6 +103,13 @@
   const GH = ['...wwww...', '.wwwwwwww.', 'wwwwwwwwww', 'wweewweeww', 'wweewweeww', 'wpwwwwwwpw', 'wwwwmmwwww', 'wwwwwwwwgw', 'wwwwwwwggw'];
   const ghPal = { w: '#f7f5ff', g: '#d8d4f0', e: '#2a2440', p: '#f4a9b8', m: '#2a2440' };
   PX.ghost = ['w.ww..ww.w', '.ww.ww.ww.'].map((r) => make(GH.concat([r]), ghPal, '#5a5480'));
+  // 큰 유령(2026-11-09): 보라색, 화난 눈썹, 꼬마 유령보다 크다. 세 번 맞아야 쓰러짐
+  const BG = ['.....wwwwww.....', '...wwwwwwwwww...', '..wwwwwwwwwwww..', '.wwwwwwwwwwwwww.', '.wwbbwwwwwwbbww.', 'wwwwbbwwwwbbwwww', 'wwweeewwwweeewww', 'wwweeewwwweeewww', 'wwwwwwwwwwwwwwww', 'wpwwwmmmmmmwwwpw', 'wwwwwmrrrrmwwwww', 'wwwwwwmmmmwwwwgw', 'wwwwwwwwwwwwwggw', 'wwwwwwwwwwwwwggw'];
+  const bgPal = { w: '#b9a4f2', g: '#9a83de', e: '#2a1840', b: '#2a1840', p: '#f08aa8', m: '#2a1840', r: '#e8506a' };
+  const bgHit = { w: '#ffffff', g: '#ffe0f0', e: '#2a1840', b: '#2a1840', p: '#f08aa8', m: '#2a1840', r: '#e8506a' };
+  const BGT = ['ww.www..www.ww.w', '.ww.ww.ww.ww.ww.'];
+  PX.bigGhost = BGT.map((r) => make(BG.concat([r]), bgPal, '#3c2a70'));
+  PX.bigGhostHit = make(BG.concat([BGT[0]]), bgHit, '#3c2a70');
   const FI = ['..bbbbbb..', '.bbbccbbb.', '.bbccccbb.', 'bbccccccbb', 'bccecceccb', 'bccecceccb', 'bcccmmcccb', '.bccccccb.', '..bbbbbb..'];
   const fiPal = { b: '#3f9be8', c: '#bfeaff', e: '#1d2a44', m: '#1d2a44' };
   PX.fire = [['....bb....', '...bbbb...'], ['.....b....', '..bbbb....']].map((top) => make(top.concat(FI), fiPal, '#1f4f8a'));

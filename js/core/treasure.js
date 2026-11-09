@@ -21,8 +21,11 @@
     tDefend: 25,
     tResult: 8, // 미니게임 결과
     hearts: 10,
-    foes: 20, // 아이 한 명당 적 수(미니게임마다 10%씩 늘어남) — node tools/sim-treasure.mjs
-    faster: 0.15, // 미니게임마다 적이 이만큼씩 빨라짐(2026-11-06 담임: 단계가 올라갈수록 빨라지게)
+    foes: 20, // 아이 한 명당 적 수 — node tools/sim-treasure.mjs
+    foesMore: 0, // 미니게임마다 적 수가 이만큼씩 늘어남(비율)
+    faster: 0.1, // 미니게임마다 적이 이만큼씩 빨라짐(2026-11-06 담임: 단계가 올라갈수록 빨라지게)
+    big: 0.1, // 첫 미니게임의 큰 유령 비율(2026-11-09 담임: "가만히만 잇어도 다 지켜진다 … 한번에 안 죽는 적")
+    bigMore: 0.03, // 미니게임마다 큰 유령 비율이 이만큼씩 늘어남
     minutes: 99, // (황금 찾기용 칸)
   };
   // 팀 동물: [이름, dolls.js ANIMALS 번호]
@@ -38,7 +41,9 @@
     CHEST: 1.15, // 보물에 닿는 거리
     SPEED: 4.2, // 아이 걸음(초당)
     FLY: 0.22, // 별이 날아가는 시간(화면용)
-    range: (lv) => 2.6 + lv * 0.3,
+    BIG_HP: 3, // 큰 유령이 쓰러지기까지 맞는 횟수
+    BIG_DMG: 2, // 큰 유령이 보물에 닿으면 잃는 하트
+    range: (lv) => 2.0 + lv * 0.2, // 2026-11-09: 2.9~4.1 → 2.2~3.0칸(보물 옆에 서 있기만 해서는 사방을 못 막게)
     // 단계별 [던지기 간격(초), 한 번에 물리치는 적] — 초당 0.67 · 0.9 · 1.18 · 1.48 · 1.76마리
     WEAPON: [null, [1.5, 1], [1.1, 1], [1.7, 2], [1.35, 2], [1.7, 3]],
   });
@@ -60,10 +65,11 @@
   };
 
   /* ---------- 적 목록 ---------- */
-  // 종류 0 도깨비불(빠름), 1 꼬마 유령(느림), 2 큰 유령(느리고 두 번 맞아야 — 나중에. 지금은 0·1만)
-  // spd: 빠르기 배율(뒤 미니게임일수록 빨라짐). 모든 기기가 같은 값을 써야 한다(판 문서 live.spd)
-  QP.trSchedule = function (seed, dur, n, spd) {
+  // 종류 0 도깨비불(빠름), 1 꼬마 유령(느림), 2 큰 유령(느리지만 TR.BIG_HP번 맞아야 쓰러지고, 보물에 닿으면 하트 TR.BIG_DMG개)
+  // spd: 빠르기 배율, big: 큰 유령 비율(뒤 미니게임일수록 커짐). 모든 기기가 같은 값을 써야 한다(판 문서 live.spd·live.big)
+  QP.trSchedule = function (seed, dur, n, spd, big) {
     spd = spd || 1;
+    big = big || 0;
     const r = QP.rng(seed);
     n = n || 64;
     const out = [];
@@ -74,18 +80,17 @@
       const u = Math.pow((i + 0.5) / n, 0.8);
       const w = Math.min(W - 1, Math.floor(u * W));
       const t = 0.3 + (w / W) * end + r() * (end / W) * 0.7;
-      const k = r() < 0.55 ? 0 : 1;
+      const rk = r();
+      const k = rk < big ? 2 : rk < big + (1 - big) * 0.55 ? 0 : 1;
       const a = r() * Math.PI * 2;
-      const sp = (k === 0 ? 1.35 + r() * 0.35 : 0.95 + r() * 0.25) * spd;
+      const sp = (k === 0 ? 1.35 + r() * 0.35 : k === 1 ? 0.95 + r() * 0.25 : 0.8 + r() * 0.15) * spd;
       const sx = Math.cos(a) * TR.SX,
         sy = Math.sin(a) * TR.SY;
       const L = Math.hypot(sx, sy);
-      out.push({ i, t: Math.round(t * 100) / 100, a, k, sp, sx, sy, L, arr: t + (L - TR.CHEST) / sp });
+      out.push({ i, t: Math.round(t * 100) / 100, a, k, hp: k === 2 ? TR.BIG_HP : 1, sp, sx, sy, L, arr: t + (L - TR.CHEST) / sp });
     }
     out.sort((a, b) => a.t - b.t);
     out.forEach((e, j) => (e.i = j));
-    if (0) {
-    }
     return out;
   };
   // t초에 적 위치 (아직 안 나왔으면 null). arrived = 보물에 닿음
@@ -108,6 +113,8 @@
       this.hit = {}; // 적 번호 → 보물에 닿은 때
       this.kills = []; // [적 번호, 아이 번호 k, 때(1/100초)]
       this.hits = []; // [적 번호, 때]
+      this.hp = {}; // 적 번호 → 맞은 횟수(큰 유령)
+      this.hurts = []; // 쓰러지지 않고 맞은 것 [적 번호, 아이 번호 k, 때(1/100초)]
       this.cool = kids.map((_, k) => 0.4 + k * 0.17);
       this.t = 0;
     }
@@ -126,7 +133,7 @@
         if (e.arr > t || this.dead[e.i] !== undefined || this.hit[e.i] !== undefined) continue;
         this.hit[e.i] = e.arr;
         this.hits.push([e.i, Math.round(e.arr * 100)]);
-        if (this.h > 0) this.h--;
+        this.h = Math.max(0, this.h - (e.k === 2 ? TR.BIG_DMG : 1));
       }
       // 던지기
       this.kids.forEach((kd, k) => {
@@ -148,6 +155,12 @@
         near.sort((a, b) => a[0] - b[0]);
         const [cool, many] = TR.WEAPON[Math.max(1, Math.min(5, kd.lv))];
         for (const [, e] of near.slice(0, many)) {
+          const n = (this.hp[e.i] || 0) + 1;
+          this.hp[e.i] = n;
+          if (n < (e.hp || 1)) {
+            this.hurts.push([e.i, k, Math.round(t * 100)]);
+            continue;
+          }
           this.dead[e.i] = t;
           this.kills.push([e.i, k, Math.round(t * 100)]);
         }

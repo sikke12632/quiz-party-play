@@ -61,7 +61,7 @@
       noise(at, 0.03, 0.12, 3000);
     },
     cha: (at) => {
-      tone(at, 150, 50, 0.18, 'sine', 0.6);
+      tone(at, 150, 50, 0.18, 'sine', A.VOL ? A.VOL.drum : 0.6);
       noise(at, 0.09, 0.35, 1800);
       tone(at, 880, 860, 0.12, 'square', 0.09);
     },
@@ -74,17 +74,57 @@
       if (a) tone(a.currentTime, 180, 120, 0.12, 'sawtooth', 0.06);
     },
   };
-  // 박자 소리 미리 걸기: 다음 0.15초 안 박자. st = { i: 다음에 걸 박자 번호 }
-  A.schedule = function (B, g, st) {
+  /* ---------- 목소리 「여엉~」「차!」 (선생님 화면·전자칠판용) ----------
+   * sounds/tug-yeong.wav · sounds/tug-cha.wav (지금은 Windows 한국어 음성 Heami 로 만든 것. 선생님 목소리로 바꾸려면 같은 이름으로 넣기)
+   * 「여엉」은 작게(VOL.yeong), 「차!」는 크게(VOL.cha). 막판(박자 간격 0.5초 미만)은 「여엉」 없이 「차!」만. */
+  A.VOL = { yeong: 0.35, cha: 1.0, drum: 0.6 };
+  A.voice = { yeong: null, cha: null };
+  let voiceTried = false;
+  A.loadVoice = function (base) {
+    if (voiceTried) return;
     const a = A.audio();
     if (!a) return;
-    while (st.i < B.length && B[st.i] - g < 0.15) {
+    voiceTried = true;
+    for (const k of ['yeong', 'cha'])
+      fetch((base || A.voiceBase || 'sounds/') + 'tug-' + k + '.wav')
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+        .then((buf) => a.decodeAudioData(buf))
+        .then((ab) => (A.voice[k] = ab))
+        .catch(() => {}); // 없으면 딴딴딴 소리만
+  };
+  function playBuf(ab, at, vol, rate) {
+    const a = A.audio();
+    if (!a || !ab) return;
+    const s = a.createBufferSource(),
+      g = a.createGain();
+    s.buffer = ab;
+    s.playbackRate.value = rate || 1;
+    g.gain.value = vol;
+    s.connect(g).connect(a.destination);
+    s.start(Math.max(a.currentTime, at));
+  }
+  // 박자 소리 미리 걸기: 다음 0.15초 안 박자. st = { i: 다음에 걸 박자 번호 }. o.voice = 목소리도(선생님 화면)
+  A.schedule = function (B, g, st, o) {
+    const a = A.audio();
+    if (!a) return;
+    const voice = o && o.voice;
+    while (st.i < B.length && B[st.i] - g < (voice ? 0.75 : 0.15)) {
       const b = B[st.i],
         gap = QP.tgGap(B, st.i);
       if (b - g > -0.05) {
-        const at = a.currentTime + Math.max(0, b - g);
-        A.SND.tick(Math.max(a.currentTime, at - (gap * 2) / 3), 0);
-        A.SND.tick(Math.max(a.currentTime, at - gap / 3), 1);
+        // 스피커까지 걸리는 시간만큼 일찍 낸다(전자칠판·블루투스 스피커 늦음 보정) + 손으로 맞춘 값(A.soundShift)
+        const lat = (a.outputLatency || 0) + (a.baseLatency || 0) + (A.soundShift || 0);
+        const at = a.currentTime + Math.max(0, b - g - lat);
+        if (voice && A.voice.yeong && gap >= 0.5) {
+          // 「여엉」: 여(첫 작은 동그라미)에서 시작해 차 바로 앞에서 끝나게 빠르기를 맞춤
+          const room = gap * 0.6,
+            rate = Math.min(1.6, Math.max(1, A.voice.yeong.duration / room));
+          playBuf(A.voice.yeong, at - (gap * 2) / 3, A.VOL.yeong, rate);
+        } else if (!voice || !A.voice.yeong) {
+          A.SND.tick(Math.max(a.currentTime, at - (gap * 2) / 3), 0);
+          A.SND.tick(Math.max(a.currentTime, at - gap / 3), 1);
+        }
+        if (voice && A.voice.cha) playBuf(A.voice.cha, at - 0.02, A.VOL.cha);
         A.SND.cha(at);
       }
       st.i++;

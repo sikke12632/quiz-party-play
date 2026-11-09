@@ -39,6 +39,11 @@
 .tgdef .tg-big .w { display: inline-block; font-family: 'QPTitle', serif; font-size: 92px; color: #fff; -webkit-text-stroke: 3px #3a2a20; text-shadow: 6px 6px 0 #3a2a20; }
 .tgdef .tg-big .w small { display: block; font-size: 26px; -webkit-text-stroke: 0; text-shadow: 2px 2px 0 #3a2a20; }
 .tgdef .tg-big .w.spurt { color: #ffe36a; }
+/* 「차!」에만 눌러요 경고 (시작 전·헛손질 연달아) */
+.tgdef .tg-warn { position: fixed; left: 50%; top: 30%; transform: translateX(-50%); z-index: 6; pointer-events: none; text-align: center; padding: 14px 26px; border: 5px solid #c0392b; border-radius: 14px; background: #fff3c4; color: #8f1d12; font-family: 'QPTitle', serif; font-size: 40px; box-shadow: 6px 6px 0 rgba(60,20,10,.4); white-space: nowrap; animation: tgblink .45s steps(2, start) infinite; }
+.tgdef .tg-warn small { display: block; font-family: 'QPBody', sans-serif; font-size: 20px; color: #5a2a1a; margin-top: 4px; }
+.tgdef .tg-warn[hidden] { display: none; }
+@keyframes tgblink { 0% { background: #fff3c4; border-color: #c0392b; } 100% { background: #ffd0c4; border-color: #ffd23e; } }
 @media (max-height: 760px) { .tgdef .tg-tap { min-height: 110px; font-size: 60px; margin: 10px auto 12px; } .tgdef .tg-call { font-size: 54px; } }
 .tgres .tgface { font-size: 64px; line-height: 1.1; }
 .tgres .tgbig { font-family: 'QPTitle', serif; font-size: 52px; color: #d9573f; }
@@ -81,7 +86,8 @@
       '<div class="tg-mini"><canvas width="240" height="40"></canvas></div>' +
       '<div class="tg-lane"><canvas width="320" height="64"></canvas><div class="tg-call"></div><div class="tg-judge"></div><div class="tg-score">내 점수<b>0</b><span class="tg-combo"></span></div></div>' +
       '<button class="tg-tap">차!<small>「차!」에 맞춰 눌러요 · 스페이스바도 돼요 · 막 누르면 헛손질</small></button>' +
-      '<div class="tg-big"></div>';
+      '<div class="tg-big"></div>' +
+      '<div class="tg-warn" hidden>⚠️ 「차!」에만 눌러요!<small>여·엉에 누르거나 막 누르면 헛손질 → 다음 차는 0점</small></div>';
     parent.appendChild(root);
     const $ = (s) => root.querySelector(s);
     const mini = $('.tg-mini canvas').getContext('2d'),
@@ -110,7 +116,8 @@
       fx = 0,
       lastFrame = performance.now(),
       sound = { i: 0 },
-      shownPos = 0;
+      shownPos = 0,
+      wilds = []; // 헛손질한 때들(연달아 하면 경고)
     function setup(L) {
       mg = L.mg;
       B = QP.tgBeats(L.dur);
@@ -123,6 +130,7 @@
       sentFinal = false;
       sentScore = -1;
       shownPos = 0;
+      wilds = [];
       judgeTxt = '';
       const an = animal(C, team);
       $('.tg-team img').src = PX.icon(an, C.seat.cl || 0, 48);
@@ -149,6 +157,7 @@
       const r = J.tap(g);
       if (r.kind === 'dup') return;
       show(r.kind, g);
+      if (r.kind === 'miss' || r.kind === 'lost') wilds.push(g);
       if (r.kind === 'perfect' || r.kind === 'good') {
         fx = 0.1;
         A.SND.hit(r.kind === 'perfect');
@@ -250,6 +259,10 @@
         big = '<span class="w">' + (win < 0 ? '비겼어요!' : win === team ? '우리 팀 승리!' : '아쉬워요!') + '<small>' + (L.end !== null ? '끝선까지 끌어왔어요!' : '내 점수 ' + J.score + '점 · TV를 봐요') + '</small></span>';
       } else if (g > 19 && g < 19.9) big = '<span class="w spurt">막판 스퍼트!</span>';
       if (big !== bigSig) $('.tg-big').innerHTML = bigSig = big;
+      const recent = wilds.filter((w) => g - w < 3);
+      const warn = !over && (g < 1.1 || (recent.length >= 2 && g - recent[recent.length - 1] < 2));
+      const we = $('.tg-warn');
+      if (we.hidden === warn) we.hidden = !warn;
     }
     raf = requestAnimationFrame(frame);
     return {

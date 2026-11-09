@@ -2,7 +2,7 @@
  *   QP.TugTV.draw(부모, ref, {onResults, onNew}) — 심판 소식마다 부른다 / QP.TugTV.hide()
  * 미니게임 중: 위쪽 박자표(아이 디벗과 같은 박자), 가운데 큰 외침(여·엉·차!), 아래 마당에서 두 팀이 줄을 당김(2배 크기·두 줄).
  * 그 밖(문제·결과·끝): 보물 지키기 TV 틀(.trtv)에 두 팀 줄.
- * TV는 소리를 내지 않는다(아이 디벗이 박자 소리를 냄).
+ * 소리: 선생님 화면(전자칠판)에서 「여엉~(작게) 차!(크게)」 목소리 + 쿵 (🔊 단추로 끔, 이 컴퓨터에 기억). 아이 디벗은 딴딴딴 소리.
  */
 (function () {
   'use strict';
@@ -28,6 +28,9 @@
 .tgtv .tg-big .w { display: inline-block; font-family: 'QPTitle', serif; font-size: 100px; color: #fff; -webkit-text-stroke: 3px #3a2a20; text-shadow: 6px 6px 0 #3a2a20; }
 .tgtv .tg-big .w small { display: block; font-size: 28px; -webkit-text-stroke: 0; text-shadow: 2px 2px 0 #3a2a20; }
 .tgtv .tg-big .w.spurt { color: #ffe36a; }
+.tgtv .tg-mute { position: absolute; right: 26px; bottom: 54px; width: 64px; height: 64px; font-size: 32px; padding: 0; cursor: pointer; z-index: 3; }
+.tgtv .tg-shift { position: absolute; right: 100px; bottom: 58px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 15px; color: #5a4636; z-index: 3; }
+.tgtv .tg-shift button { width: 40px; height: 40px; font-size: 20px; border: 2px solid #3a2a20; border-radius: 6px; background: #fff; cursor: pointer; }
 .tgtv .tg-foot { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; color: #fff; font-size: 20px; text-shadow: 2px 2px 0 #3a2a20; }
 .tgrows .row .tgwins { font-family: 'QPTitle', serif; font-size: 34px; color: #2a211b; min-width: 120px; text-align: right; } .tgrows .row .tgwins small { font-family: 'QPBody', sans-serif; font-size: 16px; color: #5a4636; display: block; }
 .tgrows .row .tgavg { flex: 1; font-size: 20px; color: #5a4636; text-align: center; } .tgrows .row .tgavg b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 34px; color: #d9573f; }
@@ -68,6 +71,8 @@
       '<div class="tg-mid"><h1></h1><p></p></div>' +
       '<div class="tg-card tg-tm r"><img alt=""><div><b></b><span></span></div></div></div>' +
       '<div class="tg-lane"><canvas width="320" height="64"></canvas></div><div class="tg-call"></div><div class="tg-big"></div>' +
+      '<button class="tg-card tg-mute" title="소리 켜기/끄기"></button>' +
+      '<div class="tg-card tg-shift"><button data-sh="-1" title="소리가 화면보다 늦게 들리면">◀</button><span></span><button data-sh="1" title="소리가 화면보다 빨리 들리면">▶</button></div>' +
       '<div class="tg-foot">「차!」에 맞춰 디벗을 누를수록 세게 당겨요 · 정답을 많이 맞힌 친구일수록 힘이 세요 · 인원이 달라도 공평하게(한 명당 평균)</div>';
     parent.appendChild(root);
     mode = 'game';
@@ -78,7 +83,42 @@
     fc.imageSmoothingEnabled = lc.imageSmoothingEnabled = false;
     const A = QP.TugArt;
     let last = performance.now(),
-      bigSig = '';
+      bigSig = '',
+      sound = { i: 0 },
+      soundMg = -1;
+    // 소리: 기본 켬, 이 컴퓨터에 기억
+    let muted = false;
+    try {
+      muted = localStorage.getItem('qp-tug-tv-mute') === '1';
+    } catch (e) {}
+    const mb = $('.tg-mute');
+    const setMute = () => (mb.textContent = muted ? '🔇' : '🔊');
+    setMute();
+    mb.onclick = () => {
+      muted = !muted;
+      try {
+        localStorage.setItem('qp-tug-tv-mute', muted ? '1' : '0');
+      } catch (e) {}
+      setMute();
+      if (!muted) A.loadVoice();
+    };
+    if (!muted) A.loadVoice();
+    // 소리 박자 맞추기(이 컴퓨터에 기억): ◀ = 소리를 일찍, ▶ = 소리를 늦게. 0.03초씩
+    try {
+      A.soundShift = +localStorage.getItem('qp-tug-tv-shift') || 0;
+    } catch (e) {}
+    const shTxt = () => ($('.tg-shift span').textContent = '소리 박자 ' + (A.soundShift > 0 ? '일찍 ' : A.soundShift < 0 ? '늦게 ' : '') + (A.soundShift ? Math.abs(Math.round(A.soundShift * 100)) / 100 + '초' : '그대로'));
+    shTxt();
+    root.querySelectorAll('[data-sh]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          A.soundShift = Math.round(((A.soundShift || 0) + (b.dataset.sh === '-1' ? 0.03 : -0.03)) * 100) / 100;
+          try {
+            localStorage.setItem('qp-tug-tv-shift', String(A.soundShift));
+          } catch (e) {}
+          shTxt();
+        })
+    );
     function frame(now) {
       if (!root || mode !== 'game') return;
       raf = requestAnimationFrame(frame);
@@ -91,6 +131,11 @@
       const g = (ref.net.now() - L.t0) / QP.ms(1);
       const st = ref.liveTeams();
       const over = L.end !== null || g >= L.dur;
+      if (L.mg !== soundMg) (soundMg = L.mg), (sound = { i: 0 });
+      if (!muted && !over) {
+        A.muted = false;
+        A.schedule(B, g, sound, { voice: true });
+      }
       shownPos += (st.pos - shownPos) * Math.min(1, dt * 4);
       // 마당
       fc.drawImage(A.field(), 0, 0);

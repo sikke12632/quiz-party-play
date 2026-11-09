@@ -88,17 +88,24 @@
         uid = null;
       },
       now: () => Date.now() + offset,
-      // 기기 시계 맞추기: 서버 시각을 한 번 써 보고 되읽는다
+      // 기기 시계 맞추기: 서버 시각을 써 보고 되읽기를 4번 해서, 가장 빨리 다녀온 것으로 맞춘다
+      // (오가는 시간이 짧을수록 오차가 작다 — 줄다리기 박자처럼 기기끼리 0.1초 안으로 맞아야 하는 것 때문, 2026-11-09)
       async calibrate(path) {
-        try {
-          const t0 = Date.now();
-          await F.setDoc(ref(path), { ts: F.serverTimestamp() }, { merge: true });
-          const s = await F.getDoc(ref(path));
-          const t1 = Date.now();
-          const ts = s.get('ts');
-          if (ts && ts.toMillis) offset = ts.toMillis() - (t0 + t1) / 2;
-        } catch (e) {
-          /* 못 맞추면 기기 시계 그대로 */
+        let best = Infinity;
+        for (let i = 0; i < 4; i++) {
+          try {
+            const t0 = Date.now();
+            await F.setDoc(ref(path), { ts: F.serverTimestamp() }, { merge: true });
+            const s = await F.getDoc(ref(path));
+            const t1 = Date.now();
+            const ts = s.get('ts');
+            if (ts && ts.toMillis && t1 - t0 < best) {
+              best = t1 - t0;
+              offset = ts.toMillis() - (t0 + t1) / 2;
+            }
+          } catch (e) {
+            break; /* 못 맞추면 기기 시계 그대로(또는 앞에서 맞춘 값) */
+          }
         }
         return offset;
       },

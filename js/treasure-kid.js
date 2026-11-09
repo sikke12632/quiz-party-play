@@ -128,7 +128,7 @@
       const team = C.seat.team;
       mates = (C.game.roster || []).filter((x) => x.team === team);
       myK = mates.findIndex((x) => x.sid === C.seat.sid);
-      E = QP.trSchedule(L.seed, L.dur, L.n[team], L.spd);
+      E = QP.trSchedule(L.seed, L.dur, L.n[team], L.spd, L.big);
       me = QP.trHome(Math.max(0, myK), mates.length);
       vel = [0, 0];
       shown = {};
@@ -220,6 +220,12 @@
         dead[i] = { k, t: tk / 100 };
         if (!atk[k] || atk[k] < tk / 100) atk[k] = tk / 100;
       }
+      const hurtL = (L.hurts && L.hurts[team]) || [];
+      const hurtOf = {}; // 큰 유령 → [[k, 때], …] 쓰러지지 않고 맞은 것
+      for (const [i, k, tk] of hurtL) {
+        (hurtOf[i] = hurtOf[i] || []).push([k, tk / 100]);
+        if (!atk[k] || atk[k] < tk / 100) atk[k] = tk / 100;
+      }
       const hitSet = {};
       for (const [i] of hits) hitSet[i] = 1;
       if (L.h[team] < hearts) hurtAt = t;
@@ -243,11 +249,29 @@
         if (!dd && hitSet[e.i] && t >= e.arr) continue;
         const p = QP.trPos(e, dd ? Math.min(t, dd.t) : t);
         if (dd && t >= dd.t) shots.push({ from: shown[(mates[dd.k] || {}).sid] || [0, 0], to: p, u: (t - dd.t) / TR.FLY });
+        let nHurt = 0,
+          flash = false;
+        for (const [hk, ht] of hurtOf[e.i] || []) {
+          if (t < ht) continue;
+          if (t < ht + TR.FLY) shots.push({ from: shown[(mates[hk] || {}).sid] || [0, 0], to: QP.trPos(e, t), u: (t - ht) / TR.FLY });
+          else nHurt++;
+          if (t >= ht + TR.FLY && t < ht + TR.FLY + 0.18) flash = true;
+        }
         const fl = e.sx > 0 ? -1 : 1;
         list.push({
           y: p.y,
           f: () => {
-            shadow(p.x, p.y, 4);
+            shadow(p.x, p.y, e.k === 2 ? 7 : 4);
+            if (e.k === 2) {
+              spr(flash ? PX.bigGhostHit : PX.bigGhost[f2], p.x, p.y, fl < 0, 3 + Math.round(Math.sin(t * 2 + e.i) * 1.5));
+              // 남은 목숨 점
+              const left = (e.hp || 1) - (dd ? e.hp : nHurt);
+              for (let j = 0; j < e.hp; j++) {
+                g.fillStyle = j < left ? '#ff4d6d' : 'rgba(40,20,60,.45)';
+                g.fillRect(sx(p.x) - e.hp * 2 + j * 4, sy(p.y) - 24, 3, 3);
+              }
+              return;
+            }
             spr(e.k === 0 ? PX.fire[md(t * 6 + e.i, 2)] : PX.ghost[f2], p.x, p.y, fl < 0, 3 + Math.round(Math.sin(t * 3 + e.i) * 1.5));
           },
         });

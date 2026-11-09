@@ -114,7 +114,7 @@
       b.walk = L.mg;
       const mates = (c.game.roster || []).filter((x) => x.team === team);
       const k = mates.findIndex((x) => x.sid === c.seat.sid);
-      const E = QP.trSchedule(L.seed, L.dur, L.n[team], L.spd);
+      const E = QP.trSchedule(L.seed, L.dur, L.n[team], L.spd, L.big);
       const home = QP.trHome(k, mates.length);
       let p = home.slice();
       const dead = {};
