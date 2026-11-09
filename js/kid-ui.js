@@ -14,6 +14,8 @@
   let key = ''; // 지금 그린 화면
   let codeBuf = '';
   let shortBuf = '';
+  // 보기를 누르면 바로 내지 않고 「골라 두기」 → 「내기」(또는 같은 보기 한 번 더)로 낸다. 시간이 끝나기 직전엔 고른 답을 저절로 낸다(2026-11-09 담임: 잘못 누르는 아이가 많음)
+  let pick = { r: -1, v: null };
   let portrait = { av: -1, url: '' };
   let chest = null; // 상자 3D (한 번만 만든다)
   let chestCv = null;
@@ -375,8 +377,23 @@
     } else if (chest) chest.setActive(false);
     tickOnly();
   }
+  // 보기 고르기: 처음 누르면 골라 두기, 같은 보기를 한 번 더 누르면 내기
+  function choose(v) {
+    if (!C || !C.myQ() || C.sent.a === C.round) return;
+    if (pick.r === C.round && pick.v === v) return submitPick();
+    pick = { r: C.round, v };
+    document.querySelectorAll('.answers button').forEach((b) => b.classList.toggle('chosen', b.dataset.ans === v));
+    const bar = document.getElementById('pickbar');
+    if (bar) bar.hidden = false;
+  }
+  function submitPick() {
+    if (!C || pick.r !== C.round || pick.v === null) return;
+    if (C.answer(pick.v)) C.sent.v = pick.v;
+  }
   function tickOnly() {
     if (!C || C.screen !== 'seat') return;
+    // 「내기」를 깜빡해도 시간이 끝나기 직전에 고른 답을 낸다
+    if (C.phase === 'question' && pick.r === C.round && C.sent.a !== C.round && C.timeLeft() < 1) submitPick();
     const tN = document.getElementById('tN'),
       tB = document.getElementById('tB');
     const left = C.timeLeft();
@@ -701,8 +718,11 @@
       if (!q) return '<div class="center card"><h2>다음 라운드부터 해요</h2><p>조금만 기다려요.</p></div>';
       const sent = C.sent.a === r;
       let ans = '';
-      if (q.type === 'choice') ans = '<div class="answers n' + q.ch.length + '">' + q.ch.map((c, i) => '<button data-ans="' + esc(c) + '" data-k="' + (i + 1) + '"' + (sent && C.sent.v === c ? ' class="picked"' : '') + '>' + esc(c) + '</button>').join('') + '</div>';
-      else if (q.type === 'ox') ans = '<div class="answers ox"><button data-ans="O" class="o' + (sent && C.sent.v === 'O' ? ' picked' : '') + '">O</button><button data-ans="X" class="x' + (sent && C.sent.v === 'X' ? ' picked' : '') + '">X</button></div>';
+      const chosen = !sent && pick.r === r ? pick.v : null;
+      const cls = (v) => (sent && C.sent.v === v ? ' picked' : chosen === v ? ' chosen' : '');
+      if (q.type === 'choice') ans = '<div class="answers n' + q.ch.length + '">' + q.ch.map((c, i) => '<button data-ans="' + esc(c) + '" data-k="' + (i + 1) + '" class="' + cls(c).trim() + '">' + esc(c) + '</button>').join('') + '</div>';
+      else if (q.type === 'ox') ans = '<div class="answers ox"><button data-ans="O" class="o' + cls('O') + '">O</button><button data-ans="X" class="x' + cls('X') + '">X</button></div>';
+      if ((q.type === 'choice' || q.type === 'ox') && !sent) ans += '<div class="pickbar" id="pickbar"' + (chosen === null ? ' hidden' : '') + '><button class="gobtn" data-act="submit">내기 ✓</button><span>잘못 골랐으면 다른 보기를 눌러요</span></div>';
       else ans = '<div class="shortbox"><div class="shortv" id="sv">' + (esc(shortBuf) || '&nbsp;') + '</div>' + keypad('sk', q.type === 'short' ? '.' : '') + '<button class="go" data-act="short">내기</button></div>';
       return (
         '<div class="qcard' + (q.type === 'short' ? ' left' : '') + '"><div class="tag">' + (q.test ? '<span class="test">시험용</span>' : '') + '<span>' + r + '라운드</span></div>' +
@@ -823,10 +843,8 @@
     if (d.act === 'claim') return C.claimTab();
     if (d.act === 'restart') return location.reload();
     if (d.act === 'howto') return QP.Howto && QP.Howto.open(C.game.mode);
-    if (d.ans !== undefined) {
-      if (C.answer(d.ans)) C.sent.v = d.ans;
-      return;
-    }
+    if (d.ans !== undefined) return choose(d.ans);
+    if (d.act === 'submit') return submitPick();
     if (d.act === 'short') {
       if (shortBuf && C.answer(shortBuf)) {
         C.sent.v = shortBuf;
@@ -897,7 +915,8 @@
       let v = null;
       if (q.type === 'ox' && /^[oOxXㅐㅌ]$/.test(e.key)) v = /[oOㅐ]/.test(e.key) ? 'O' : 'X';
       if (q.type === 'choice' && /^[1-9]$/.test(e.key) && q.ch[+e.key - 1] !== undefined) v = q.ch[+e.key - 1];
-      if (v !== null && C.answer(v)) C.sent.v = v;
+      if (v !== null) return choose(v);
+      if (e.key === 'Enter') submitPick();
     }
   });
 

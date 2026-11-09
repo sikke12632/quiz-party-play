@@ -194,6 +194,14 @@ button.ghost { font-size: 18px; padding: 9px 20px; border-radius: 999px; border:
 .answers.n2 button, .answers.n3 button { min-height: 150px; }
 .answers button.picked { outline: 6px solid #fff; outline-offset: -10px; filter: brightness(1.08); }
 .answers:has(.picked) button:not(.picked) { opacity: .45; }
+.answers button.chosen { outline: 8px solid #fff; outline-offset: -12px; transform: translateY(-6px); filter: brightness(1.1); }
+.answers:has(.chosen) button:not(.chosen) { opacity: .55; }
+.pickbar { position: fixed; left: 50%; top: 272px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; z-index: 3; white-space: nowrap; }
+.pickbar[hidden] { display: none; }
+.pickbar .gobtn { font-family: 'QPTitle', serif; font-size: 30px; padding: 6px 40px; border: 0; border-radius: 999px; background: var(--teal); color: #fff; box-shadow: 0 5px 0 var(--teal-d); cursor: pointer; animation: pickbeat .6s ease-in-out infinite alternate; }
+.pickbar .gobtn:active { transform: translateY(4px); box-shadow: none; }
+.pickbar span { font-size: 17px; color: #5a4636; background: rgba(255,255,255,.75); padding: 3px 12px; border-radius: 999px; }
+@keyframes pickbeat { to { transform: scale(1.06); } }
 .sentnote { position: fixed; left: 50%; top: 290px; transform: translateX(-50%); font-family: 'QPTitle', serif; font-size: 22px; background: var(--teal); color: #fff; padding: 4px 20px; border-radius: 999px; box-shadow: 0 3px 0 var(--teal-d); z-index: 2; }
 .qcard .qimg { max-height: 120px; max-width: 60%; margin-bottom: 8px; border-radius: 10px; }
 .shortbox { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; }
