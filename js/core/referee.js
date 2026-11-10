@@ -118,7 +118,7 @@
     listen() {
       const n = this.net;
       this.unsubs.push(n.onCol(this.path('joins'), (list) => list.forEach((d) => this.onJoin(d.id, d.data))));
-      this.unsubs.push(n.onCol(this.path('players'), (list) => list.forEach((d) => this.onSeat(+d.id, d.data))));
+      this.unsubs.push(n.onCol(this.path('players'), (list) => list.forEach((d) => (QP.lbSeat && QP.lbSeat(this, +d.id, d.data), this.onSeat(+d.id, d.data)))));
       // 선생님 탭은 하나만 심판이 된다(가장 나중에 연 탭)
       this.unsubs.push(
         n.onDoc(this.path(), (g) => {
@@ -131,8 +131,10 @@
         })
       );
       this.tick = setInterval(() => this.onTick(), 500);
+      if (QP.lbAttach) QP.lbAttach(this); // 모이는 곳 놀이(lobby.js)
     }
     stop() {
+      if (QP.lbDetach) QP.lbDetach(this);
       this.unsubs.forEach((u) => u());
       this.unsubs = [];
       clearInterval(this.tick);

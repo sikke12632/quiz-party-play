@@ -16,6 +16,11 @@
   const prefs = QP.kv('qp-teacher-prefs');
   let net, ref, INDEX, tvReady = false;
   let screen = 'boot';
+  let lobbyTV = null; // 모이는 곳 도트 광장(lobby-view.js)
+  const lobbyOff = () => {
+    if (lobbyTV) lobbyTV.unmount();
+    lobbyTV = null;
+  };
   let showAtt = false,
     showRes = false;
   let lastPhase = '',
@@ -237,6 +242,7 @@
     prefs.set(pf);
   }
   async function scSetup() {
+    lobbyOff();
     screen = 'setup';
     const pf = Object.assign({ minutes: 10, tQ: 20, tChest: 10, tReveal: 7, fastOn: true, streakOn: true, mode: 'gold' }, prefs.get() || {});
     // 예전에 저장한 돋보기 %는 버린다(2026-11-05 기본값 8→10%)
@@ -276,6 +282,7 @@
       '<p class="modehelp" data-for="chase">반 전체가 한 팀. 문제를 몇 개 풀 때마다 디벗에서 <b>엄마 피해 도망가기</b>를 해요. 맵을 보고 뚫린 길의 모양을 재빨리 눌러요. 잡힌 친구마다 우리 반 하트가 줄고, 0이 되면 게임 오버.</p>' +
       '<p class="modehelp" data-for="flip">비밀 종족(도깨비·인간 반반) + 숨은 악마 1명. 문제 몇 개마다 맞힌 수만큼 친구를 뒤집는 눈치게임. 끝날 때 다수 무리가 승리(다수에 악마가 있으면 소수 무리 승리), 처음 종족을 끝까지 지키면 칭찬.</p>' +
       '<label class="chk howauto"><input type="checkbox" id="howauto"' + (howAuto() ? ' checked' : '') + '> 판을 만들면 <b>놀이 설명</b> 카드를 먼저 보여 주기 <small>(모이는 곳 「놀이 설명」 단추로 언제든 다시 봐요)</small></label>' +
+      '<label class="num lobbymin">모이는 곳 놀이(도깨비 꼬리잡기) <input type="number" name="lobbyMin" min="0" max="5" value="' + (pf.lobby === undefined ? QP.LB.MIN : pf.lobby) + '">분 <small>(0이면 끔 · 길게 하면 서버 사용량이 늘어요)</small></label>' +
       '<section class="mafiaopt" data-for="flip"><h3>도깨비 뒤집기 <small>해 보고 바꿔요</small></h3>' +
       [['fR', '라운드', 2, 6, ff.R], ['fPer', '라운드 사이 문제', 3, 10, ff.per], ['fPick', '최대 고르기', 1, 5, ff.maxPick]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '"></label>').join('') +
       '<br>' + [['fCh', '고르기', 8, 40, ff.tChoose], ['ftQ', '문제', 10, 60, ff.tQ]].map(([k, n, a, b, v]) => '<label class="num">' + n + ' <input type="number" name="' + k + '" min="' + a + '" max="' + b + '" value="' + v + '">초</label>').join('') +
@@ -505,6 +512,7 @@
     pf.flip = { R: num('fR', 4), per: num('fPer', 5), maxPick: num('fPick', 3), tChoose: num('fCh', 15), tQ: num('ftQ', 20) };
     pf.chase = { hearts: num('cHearts', 30), per: num('cPer', 5), M: num('cM', 3), tQ: num('ctQ', 20) };
     pf.tug = { per: num('gPer', 5), M: num('gM', 3), tQ: num('gtQ', 20) };
+    pf.lobby = Math.max(0, Math.min(5, num('lobbyMin', QP.LB.MIN)));
     pf.paint = { teams: num('pTeams', 4), per: num('pPer', 5), M: num('pM', 3), tQ: num('ptQ', 20), tDefend: num('ptD', 25) };
     pf.bossV = 2;
     pf.boss = { kind: (f('bKind').find((x) => x.checked) || { value: 'pick' }).value, teams: num('bTeams', 4), per: num('bPer', 5), M: num('bM', 3), tQ: num('btQ', 20), tDefend: num('btD', 25) };
@@ -546,7 +554,8 @@
         chs = pf.mode === 'chase',
         fls = pf.mode === 'flip';
       const Cls = pts ? QP.PaintReferee : tgs ? QP.TugReferee : mafia ? QP.MafiaReferee : bss ? QP.BossReferee : trs ? QP.TreasureReferee : chs ? QP.ChaseReferee : fls ? QP.FlipReferee : QP.Referee;
-      ref = await Cls.create(net, { cfg: pts ? Object.assign({ mode: 'paint' }, pf.paint) : tgs ? Object.assign({ mode: 'tug' }, pf.tug) : mafia ? Object.assign({ mode: 'mafia' }, pf.mafia) : bss ? Object.assign({ mode: 'boss' }, pf.boss) : trs ? Object.assign({ mode: 'treasure' }, pf.treasure) : chs ? Object.assign({ mode: 'chase' }, pf.chase) : fls ? Object.assign({ mode: 'flip' }, pf.flip) : pf, packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
+      const lobbyCfg = { lobby: pf.lobby === undefined ? QP.LB.MIN : pf.lobby }; // 모이는 곳 놀이(분)
+      ref = await Cls.create(net, { cfg: Object.assign({}, pts ? Object.assign({ mode: 'paint' }, pf.paint) : tgs ? Object.assign({ mode: 'tug' }, pf.tug) : mafia ? Object.assign({ mode: 'mafia' }, pf.mafia) : bss ? Object.assign({ mode: 'boss' }, pf.boss) : trs ? Object.assign({ mode: 'treasure' }, pf.treasure) : chs ? Object.assign({ mode: 'chase' }, pf.chase) : fls ? Object.assign({ mode: 'flip' }, pf.flip) : pf, lobbyCfg), packs, label: rangeLabel(items), onUpdate: onRef, log: (m) => console.log('[심판]', m), step: (s) => {
           stepName = s;
           stepAt = Date.now();
           err.textContent = '판을 만드는 중… (' + s + ')';
@@ -584,6 +593,7 @@
       return;
     }
     const ph = S.phase;
+    if (ph !== 'lobby') lobbyOff();
     if (ph === 'lobby' && QP.TreasureTV) QP.TreasureTV.hide();
     if (ph === 'lobby' && QP.BossTV) QP.BossTV.hide();
     if (ph === 'lobby' && QP.TugTV) QP.TugTV.hide();
@@ -658,11 +668,13 @@
         screen = '';
         scSetup();
       };
+      // 모이는 곳 놀이가 켜져 있으면 3D 섬 대신 도트 광장
+      if (QP.LobbyTV && ref.S.cfg.lobby !== 0 && !ref.viewOnly) lobbyTV = QP.LobbyTV.mount($ui, ref);
       document.getElementById('go').onclick = async () => {
         if (!(await ref.start())) toast(ref.S.mode === 'mafia' ? '도깨비 찾기는 3명 넘게 있어야 해요' : '아직 아무도 안 들어왔어요');
       };
     }
-    T.syncKids(kidsOf());
+    if (!lobbyTV) T.syncKids(kidsOf());
     if (ref.S.mode === 'mafia') T.setLamps(0, ref.S.cfg.limit);
     else T.hideLamps();
     document.getElementById('n').textContent = Object.keys(ref.S.seats).length;

@@ -299,6 +299,17 @@
       key = '';
     }
     if (inDef) return (key = k);
+    // 모이는 곳 놀이(도트 광장·꼬리잡기): 판 문서에 lb 가 있으면 광장 화면을 붙여 둔다
+    const inLb = C && C.screen === 'seat' && C.phase === 'lobby' && C.seat && C.game && C.game.lb && QP.LobbyView;
+    if (inLb && !lview) {
+      $app.innerHTML = lastHTML = '';
+      lview = QP.LobbyView.mount($app, C);
+    } else if (!inLb && lview) {
+      lview.unmount();
+      lview = null;
+      key = '';
+    }
+    if (inLb) return (key = k);
     // 엄마 피해 도망가기 미니게임: 위 맵·아래 단추 화면을 붙여 둔다
     const inCh = C && C.chase && C.screen === 'seat' && C.phase === 'chase';
     if (inCh && !cview) {
@@ -413,6 +424,7 @@
 
   /* ================= 보물 지키기 (작업/결정-보물지키기.md) ================= */
   let tview = null;
+  let lview = null; // 모이는 곳 광장
   const tAnimal = () => {
     const tm = C.game.tt && C.game.tt.teams[C.seat.team];
     return tm ? tm.a : 0;

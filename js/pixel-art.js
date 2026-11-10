@@ -39,6 +39,15 @@
     여우: ['............', '.o........o.', '.oo......oo.', 'owwoooooowwo'],
     판다: ['............', '............', '.kk......kk.', 'kkkoooooookk'],
     곰: ['............', '............', '.oo......oo.', 'owwoooooowwo'],
+    // 2026-11-10: 3D 인형 동물을 모두 도트로(모이는 곳 광장)
+    고양이: ['............', '.o........o.', '.oww....wwo.', 'owwoooooowwo'],
+    개구리: ['............', '.kkk....kkk.', 'kwwk....kwwk', 'oooooooooooo'],
+    병아리: ['.....kk.....', '....k.......', '...oooooo...', '.oooooooooo.'],
+    양: ['............', '..w.w..w.w..', '.wwwwwwwwww.', 'wwwwwwwwwwww'],
+    사슴: ['.k.k....k.k.', '..kk....kk..', '..ok....ko..', '.oooooooooo.'],
+    돼지: ['............', '.oo......oo.', '.ow......wo.', 'oooooooooooo'],
+    공룡: ['.....k......', '....kkk.....', '...kkkkk....', '.oooooooooo.'],
+    코알라: ['............', 'ooo......ooo', 'owwo....owwo', 'oooooooooooo'],
   };
   const FACE = ['oooooooooooo', 'ookossssokoo', 'oossssssssoo', 'oossessessoo', 'ospssmmsspso', '.oossssssoo.'];
   const HOOD = {
@@ -48,6 +57,14 @@
     여우: { o: '#d8743a', k: '#d8743a', w: '#fff3e0', m: '#a0503a' },
     판다: { o: '#f4f4f0', k: '#2a2a2a', w: '#2a2a2a', m: '#a0503a' },
     곰: { o: '#a8754d', k: '#a8754d', w: '#e7c39a', m: '#a0503a' },
+    고양이: { o: '#9a9aa8', k: '#9a9aa8', w: '#f2a6ad', m: '#a0503a' },
+    개구리: { o: '#6fbf4a', k: '#2f6a22', w: '#ffffff', m: '#a0503a' },
+    병아리: { o: '#ffd23e', k: '#e0a020', w: '#ffd23e', m: '#e07020' },
+    양: { o: '#f4f0e6', k: '#f4f0e6', w: '#ffffff', m: '#a0503a' },
+    사슴: { o: '#b77a45', k: '#6a4a2a', w: '#f0d8b0', m: '#a0503a' },
+    돼지: { o: '#f5b0b8', k: '#f5b0b8', w: '#e8808f', m: '#a0503a' },
+    공룡: { o: '#6fbf8a', k: '#3f8f5a', w: '#6fbf8a', m: '#a0503a' },
+    코알라: { o: '#9aa0a8', k: '#9aa0a8', w: '#e6e6ea', m: '#a0503a' },
   };
   const CLOTH = [['#d9573f', '#a33a28'], ['#3f7fa8', '#2a5a7c'], ['#5f9a55', '#3f7039'], ['#8a63b8', '#614289'], ['#e07a9a', '#b0546f'], ['#e0a93a', '#a8791e'], ['#2f8f8a', '#1f625e'], ['#6b6f7a', '#4a4d55']];
   PX.CLOTH = CLOTH;

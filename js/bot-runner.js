@@ -26,6 +26,7 @@
       const b = { i, acc: 0.4 + Math.random() * 0.55, speed: 3 + Math.random() * 10, busy: {}, num: nums[i] };
       b.c = new QP.KidClient(net, { onUpdate: () => act(b) });
       setInterval(() => b.c.paint && b.c.phase === 'defend' && QP.ptBotPlay(b.c), QP.ms(0.1)); // 색칠: 소식이 없어도 걷기
+      setInterval(() => b.c.phase === 'lobby' && QP.lbBotPlay && QP.lbBotPlay(b.c), QP.ms(0.2)); // 모이는 곳 꼬리잡기
       bots.push(b);
       b.c.enter(code).then(() => b.c.join(b.num));
       await QP.sleep(150);
