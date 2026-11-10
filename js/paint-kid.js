@@ -19,6 +19,9 @@
 .ptdef .pt-team { display: flex; align-items: center; gap: 8px; padding: 2px 12px 2px 2px; font-size: 15px; }
 .ptdef .pt-team img { width: 40px; height: 40px; image-rendering: pixelated; border-radius: 4px; }
 .ptdef .pt-team b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 20px; }
+.ptdef .pt-sw { display: flex; flex-direction: column; align-items: center; font-size: 12px; margin-left: 4px; }
+.ptdef .pt-sw i { width: 34px; height: 24px; border: 3px solid #120c1c; border-radius: 4px; }
+.ptdef .pt-big .w i.sw { display: inline-block; width: 1.1em; height: .8em; border: 3px solid #1a120b; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
 .ptdef .pt-spd { padding: 4px 12px; font-size: 15px; } .ptdef .pt-spd b { font-family: 'QPTitle', serif; font-weight: normal; font-size: 24px; color: #d9573f; }
 .ptdef .pt-bars { flex: 1; display: flex; height: 30px; border: 3px solid #120c1c; border-radius: 6px; overflow: hidden; background: #8b8794; position: relative; }
 .ptdef .pt-bars i { display: flex; align-items: center; justify-content: center; font-style: normal; font-family: 'QPTitle', serif; font-size: 16px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.5); transition: width .4s; white-space: nowrap; overflow: hidden; }
@@ -66,7 +69,7 @@
     const root = document.createElement('div');
     root.className = 'ptdef';
     root.innerHTML =
-      '<div class="pt-top"><div class="pt-card pt-team"><img alt=""><div><b></b><br><small></small></div></div><div class="pt-card pt-spd">걸음 <b>1.0</b>배</div>' +
+      '<div class="pt-top"><div class="pt-card pt-team"><img alt=""><div><b></b><br><small></small></div><div class="pt-sw"><i></i>우리 색</div></div><div class="pt-card pt-spd">걸음 <b>1.0</b>배</div>' +
       '<div class="pt-bars"></div><div class="pt-card pt-time">25</div></div>' +
       '<div class="pt-stage"><canvas></canvas></div>' +
       '<div class="pt-bot"><div class="pt-gauge"><i></i><span></span></div><button class="pt-bomb" tabindex="-1">🏺 먹물 항아리<small style="display:block;font-size:13px;font-family:QPBody,sans-serif">스페이스바</small></button></div>' +
@@ -209,6 +212,7 @@
       $('.pt-team small').textContent = '나 = ' + (C.seat.nick || '') + ' · ' + QP.PT_MAPNAME[L.map];
       $('.pt-spd b').textContent = (sp / PT.BASE).toFixed(1);
       $('.pt-gauge i').style.background = cols[t].col;
+      $('.pt-sw i').style.background = cols[t].col;
       $('.pt-bars').innerHTML = cols.map((T, i) => '<i style="background:' + T.col + '" data-t="' + i + '"></i>').join('') + '<div class="q">마지막 3초! 어느 팀이 더 칠했을까?</div>';
     }
     const gNow = (L) => (C.net.now() - L.t0) / QP.ms(1);
@@ -296,14 +300,7 @@
         const p = L.pos && L.pos[m.sid];
         if (!p) continue;
         const s = shown[m.sid] || (shown[m.sid] = { x: p[0] / 10, y: p[1] / 10, f: 0, dir: 1 });
-        const k = Math.min(1, dt * 7);
-        const nx = s.x + (p[0] / 10 - s.x) * k,
-          ny = s.y + (p[1] / 10 - s.y) * k;
-        const mv = Math.hypot(nx - s.x, ny - s.y);
-        if (Math.abs(nx - s.x) > 0.005) s.dir = nx > s.x ? 1 : -1;
-        s.f += mv * 2.2;
-        s.x = nx;
-        s.y = ny;
+        QP.ptFollow(s, p[0] / 10, p[1] / 10, dt);
       }
       // 다른 친구 먹물 항아리
       const bm = L.bm || [];
@@ -331,7 +328,7 @@
         if (!s) continue;
         list.push({ x: s.x, y: s.y, f: s.f, dir: s.dir, an: animal(C, m.team), cl: m.cl || 0, col: cols[m.team], me: mine, full: ((L.g && L.g[m.sid]) || 0) >= 100 });
       }
-      list.sort((a, b) => a.y - b.y || a.me - b.me);
+      list.sort((a, b) => a.me - b.me || a.y - b.y); // 내 인형은 늘 맨 위에
       for (const k of list) A.kid(g, k, now);
       g.setTransform(1, 0, 0, 1, 0, 0);
     }
@@ -357,7 +354,7 @@
       $('.pt-gauge').classList.toggle('warn', warn && !full);
       $('.pt-bomb').classList.toggle('on', full);
       let big = '';
-      if (gg < 0) big = '<span class="w">' + Math.ceil(-gg) + '<small>우리 팀 색으로 칠해요! 화살표로 걸어요</small></span>';
+      if (gg < 0) big = '<span class="w">' + Math.ceil(-gg) + '<small>노란 고리가 <b>나</b>예요! <i class="sw" style="background:' + cols[C.seat.team].col + '"></i>우리 팀 색으로 칠해요</small></span>';
       else if (gg < 0.6) big = '<span class="w">시작!</span>';
       else if (gg >= L.dur) big = '<span class="w">끝!<small>TV에서 결과를 봐요</small></span>';
       if (big !== bigSig) $('.pt-big').innerHTML = bigSig = big;
@@ -409,9 +406,9 @@
       const n = d.pc.length;
       return (
         '<div class="center tres dres ptres"><div class="ptface">' + (d.win ? '🎉' : '🖌️') + '</div>' +
-        '<div class="ptbig">' + (d.win ? '우리 팀 승리!' : '아쉬워요!') + '</div>' +
+        '<div class="ptbig">' + (d.rk ? '우리 팀 ' + d.rk + '등! <span style="color:#2a211b">+' + (d.pt || 0) + '점</span>' : d.win ? '우리 팀 승리!' : '아쉬워요!') + '</div>' +
         '<div class="ptpc">' + [...Array(n).keys()].map((t) => '<span class="' + (t === s.team ? 'me' : '') + '" style="background:' + colOf(C, t).col + '">' + esc(QP.TEAM_ANIMALS[teamA(C, t)][0]) + ' ' + d.pc[t] + '%</span>').join('') + '</div>' +
-        '<p class="sub">내가 칠한 칸 <b>' + d.my + '</b> · 이긴 판 ' + d.wins[s.team] + '번</p><p class="tvnote">TV를 봐요!</p></div>'
+        '<p class="sub">내가 칠한 칸 <b>' + d.my + '</b> · ' + (d.pts ? '우리 팀 점수 <b>' + d.pts[s.team] + '</b>점' : '이긴 판 ' + d.wins[s.team] + '번') + '</p><p class="tvnote">TV를 봐요!</p></div>'
       );
     }
     if (ph === 'end') {
@@ -419,7 +416,7 @@
       if (!v) return '<div class="center"><div class="spin"></div></div>';
       return (
         '<div class="center endcard"><img class="bigdoll pxi" src="' + h.tIcon(144) + '" alt=""><h1 class="t">' + h.tname + ' ' + (v.rank || '-') + '등</h1>' +
-        '<p class="sum">이긴 판 ' + (v.tot || 0) + '번 · 내가 칠한 칸 ' + (v.my || 0) + ' · 내가 맞힌 문제 ' + v.nOk + '개</p><p>' + (v.rank === 1 ? '와, 우리 팀이 1등이에요!' : '수고했어요! TV를 봐요.') + '</p></div>'
+        '<p class="sum">우리 팀 점수 ' + (v.tot || 0) + '점 · 내가 칠한 칸 ' + (v.my || 0) + ' · 내가 맞힌 문제 ' + v.nOk + '개</p><p>' + (v.rank === 1 ? '와, 우리 팀이 1등이에요!' : '수고했어요! TV를 봐요.') + '</p></div>'
       );
     }
     return null;

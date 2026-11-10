@@ -2,8 +2,8 @@
  * 문제·정답 보기·팀 나누기·끝은 보물 지키기 심판(referee-treasure.js)을 그대로 쓰고, 미니게임만 바꾼다. 팀 2~4개.
  *
  * 판 문서 live: 미니게임 중 { mg, kind:'paint', map, t0, dur, sp:{sid:걸음}, lv:{sid:맞힌 수}, pos:{sid:[x10,y10]}, g:{sid:게이지 0~100}, m:칠한 칸 글자, pc:[팀 %], bm:[[x10,y10,팀,때100]] }
- * 판 문서 dres: [{t, pc, win:1|0}]
- * 자리 문서(그 아이만): dres{mg, win, pc:[팀 %], my:내가 칠한 칸, wins:[팀 승]}, fin{rank, tot:이긴 판, k, nOk, nAns, n, wins, my}
+ * 판 문서 dres: [{t, pc, win:1|0, rk:이번 판 등수, pt:이번 판 점수}]
+ * 자리 문서(그 아이만): dres{mg, win, rk, pt, pc:[팀 %], my:내가 칠한 칸, wins:[팀 승], pts:[팀 점수 합]}, fin{rank, tot:점수 합, k, nOk, nAns, n, wins, my}
  * 아이가 쓰는 칸: a{r,v} 답, b{r:미니게임, x:칸×3, y:칸×5, d:먹물 항아리 누른 수, k:0, h:0} (보스 슈팅 칸 그대로 → 규칙 안 바꿈)
  */
 (function (root) {
@@ -24,7 +24,7 @@
       this.S.cfg.teams = n;
       // 팀 = 물감 색(여우 빨강·토끼 파랑·호랑이 노랑·판다 먹) 중 n개, 순서는 판마다 섞음
       const order = this.r.shuffle(QP.PAINT_ANIMALS.slice()).slice(0, n);
-      this.S.t = { order, mg: 0, tot: order.map(() => 0), kills: order.map(() => 0), log: [], wins: order.map(() => 0), pcs: order.map(() => 0), my: {} };
+      this.S.t = { order, mg: 0, tot: order.map(() => 0), kills: order.map(() => 0), log: [], wins: order.map(() => 0), pts: order.map(() => 0), pcs: order.map(() => 0), my: {} };
     }
 
     /* ---------- 아이가 쓴 것 ---------- */
@@ -68,7 +68,7 @@
       for (let t = 0; t < this.nTeams(); t++) {
         const kids = this.teamSeats(t);
         kids.forEach((s, k) => {
-          s.ptPos = QP.ptHome(t, k, kids.length);
+          s.ptPos = QP.ptHome(t, k, kids.length, M);
           s.ptTo = null;
           s.ptAt = 0; // 마지막으로 옮긴 때(게임 초)
           s.ptG = 0; // 게이지(칸)
@@ -103,17 +103,21 @@
       for (let t = 0; t < this.nTeams(); t++)
         for (const s of this.teamSeats(t)) {
           if (!s.ptPos) continue;
-          const dt = Math.max(0, g - (s.ptAt || 0));
-          s.ptAt = g;
           if (s.ptTo) {
+            // 걸을 수 있는 거리는 「이 아이 위치를 마지막으로 받은 뒤」 지난 시간으로 잰다.
+            // (예전엔 3분의 1초마다 다시 재서, 서버가 늦게 전한 위치를 「너무 멀리 뜀」으로 잘랐다.
+            //  잘린 자리가 벽 앞이면 벽 너머로 돌아간 아이가 TV·친구 화면에서 벽에 끼어 안 움직였다 — 2026-11-10 교실)
+            const dt = Math.max(LIVE_MS / 1000, g - (s.ptAt || 0));
+            s.ptAt = g;
             let [tx, ty] = s.ptTo;
             const [x0, y0] = s.ptPos;
             const far = Math.hypot(tx - x0, ty - y0),
-              can = (L.sp[s.sid] || PT.BASE) * Math.max(dt, LIVE_MS / 1000) * 1.6 + 0.6;
+              can = (L.sp[s.sid] || PT.BASE) * dt * 1.5 + 1;
             if (far > can) {
               tx = x0 + ((tx - x0) / far) * can;
               ty = y0 + ((ty - y0) / far) * can;
             }
+            // 받은 자리가 벽 속일 때만 벽 앞에서 멈춘다. 빈 칸이면 벽을 돌아서 왔더라도 그 자리로 옮긴다
             if (!M.free(Math.floor(tx), Math.floor(ty))) [tx, ty] = QP.ptMove(M, x0, y0, tx - x0, ty - y0, Math.hypot(tx - x0, ty - y0));
             const got = this.board.stroke(x0, y0, tx, ty, t);
             s.ptMy += got;
@@ -162,20 +166,24 @@
         this.pushLive();
       }
       const pc = this.board ? this.board.pct() : T.order.map(() => 0);
-      const wins = QP.ptWinners(pc);
+      const wins = QP.ptWinners(pc),
+        rk = QP.ptRanks(pc),
+        pts = QP.ptRoundPts(pc);
       for (const t of wins) T.wins[t]++;
+      T.pts = T.pts || T.order.map(() => 0); // (이어 하기: 옛 저장에는 없음)
       for (let t = 0; t < this.nTeams(); t++) {
         T.pcs[t] += pc[t];
-        T.tot[t] = T.wins[t]; // 순위 = 이긴 판 수
+        T.pts[t] += pts[t];
+        T.tot[t] = T.pts[t]; // 순위 = 점수 합
         T.kills[t] = Math.round(T.pcs[t] * 10); // 같으면 판 % 합(×10)
       }
-      const res = T.order.map((a, t) => ({ t, pc: Math.round(pc[t] * 10) / 10, win: wins.includes(t) ? 1 : 0 }));
+      const res = T.order.map((a, t) => ({ t, pc: Math.round(pc[t] * 10) / 10, win: wins.includes(t) ? 1 : 0, rk: rk[t], pt: pts[t] }));
       T.log.push(res);
       T.mg++;
       const ops = [];
       for (const s of this.seatList()) {
         T.my[s.sid] = (T.my[s.sid] || 0) + (s.ptMy || 0);
-        ops.push({ path: this.path('players/' + s.num), data: { dres: { mg: T.mg, win: wins.includes(s.team) ? 1 : 0, pc: res.map((x) => x.pc), my: s.ptMy || 0, wins: T.wins.slice(), map: this.live ? this.live.map : 'a' } }, merge: true });
+        ops.push({ path: this.path('players/' + s.num), data: { dres: { mg: T.mg, win: wins.includes(s.team) ? 1 : 0, rk: rk[s.team], pt: pts[s.team], pc: res.map((x) => x.pc), my: s.ptMy || 0, wins: T.wins.slice(), pts: T.pts.slice(), map: this.live ? this.live.map : 'a' } }, merge: true });
         s.blk = 0;
       }
       const over = T.mg >= c.M || S.endAfter;
@@ -190,7 +198,7 @@
       S.phaseAt = this.net.now();
       S.endsAt = S.phaseAt + QP.ms(c.tResult);
       await this.net.update(this.path(), { phase: 'dres', round: S.round, endsAt: S.endsAt, tt: this.pubT(), dres: res });
-      this.log('색칠 결과: ' + res.map((x) => QP.teamName(T.order[x.t]) + ' ' + x.pc + '%' + (x.win ? '(승)' : '')).join(', '));
+      this.log('색칠 결과: ' + res.map((x) => QP.teamName(T.order[x.t]) + ' ' + x.pc + '% ' + x.rk + '등 +' + x.pt + '점').join(', '));
       this.after(S.endsAt, () => (over ? this.finish() : this.startQuestion()));
       this.save();
       this.emit();

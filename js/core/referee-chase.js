@@ -61,12 +61,16 @@
         .sort((x, y) => x.num - y.num)
         .map((s) => ({ sid: s.sid, nick: s.nick, a: s.an, cl: s.cl }));
     }
+    // 여럿이 한꺼번에 들어오면 명단을 0.15초 모았다가 한 번만 쓴다(쓰기 횟수 줄이기, 옛 명단이 나중에 도착하는 일 막기)
     pushRoster() {
-      const ro = this.roster();
-      const sig = JSON.stringify(ro);
-      if (sig === this.rosterSig) return;
-      this.rosterSig = sig;
-      this.net.update(this.path(), { roster: ro });
+      clearTimeout(this.rosterT);
+      this.rosterT = setTimeout(() => {
+        const ro = this.roster();
+        const sig = JSON.stringify(ro);
+        if (sig === this.rosterSig) return;
+        this.rosterSig = sig;
+        this.net.update(this.path(), { roster: ro });
+      }, 150);
     }
     async onJoin(uid, d) {
       await super.onJoin(uid, d);

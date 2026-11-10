@@ -4,7 +4,7 @@
  * 미니게임: 한지 마당을 돌아다니며 붓으로 우리 팀 색을 칠한다. 남의 색 위에 덧칠할 수 있다(방해는 없음).
  *   걸음 = 직전 per문제 맞힌 수(0~5) → 기본 걸음의 1배~2배(0개도 움직임).
  *   칠한 칸이 PT.GMAX칸 모이면 「먹물 항아리」 → 누르면 내 둘레 반지름 PT.BR칸을 한 번에 칠함.
- *   판마다 칠한 넓이 %가 가장 큰 팀이 1승. 최종 = 이긴 판 수 → 같으면 판 % 합.
+ *   판마다 칠한 넓이 % 순위로 점수(1등 10 · 2등 8 · 3등 6 · 4등 4, 같은 %면 같은 점수). 최종 = 점수 합 → 같으면 판 % 합. (2026-11-10 담임: 이긴 판 수 대신 합산 점수)
  *   맵: 판마다 바뀜(1판 빈 광장, 2판 상자 광장, 3판 연못 길 …).
  * 서버로 오가는 것: 아이 → b{r:미니게임, x:칸×3, y:칸×5, d:먹물 항아리 누른 수, k:0, h:0} (보스 슈팅 칸 그대로 → 서버 규칙 안 바꿈)
  *   선생님 화면(심판) → live.m(칠한 칸 글자 한 줄), pos, g(게이지 %), pc(팀 %), bm(항아리 터진 곳)
@@ -105,27 +105,65 @@
     [PT.W - 5, 4],
     [4, PT.H - 5],
   ];
-  QP.ptHome = function (team, k, n) {
+  // M(맵)을 주면 벽 속 자리는 가까운 빈 칸 가운데로 옮긴다
+  // (상자 광장에서 팀마다 1~2명이 상자 속에서 시작해 한 판 내내 못 움직였다 — 2026-11-10 교실)
+  QP.ptHome = function (team, k, n, M) {
     const s = SPAWN[team % 4];
     const a = (k / Math.max(1, n)) * Math.PI * 2;
     const r = n > 1 ? 1.6 : 0;
-    return [s[0] + 0.5 + Math.cos(a) * r, s[1] + 0.5 + Math.sin(a) * r * 0.8];
+    const x = s[0] + 0.5 + Math.cos(a) * r,
+      y = s[1] + 0.5 + Math.sin(a) * r * 0.8;
+    if (!M || M.free(Math.floor(x), Math.floor(y))) return [x, y];
+    let best = null;
+    for (let cy = 0; cy < PT.H; cy++)
+      for (let cx = 0; cx < PT.W; cx++) {
+        if (!M.free(cx, cy)) continue;
+        const d = (cx + 0.5 - x) ** 2 + (cy + 0.5 - y) ** 2;
+        if (!best || d < best[2]) best = [cx + 0.5, cy + 0.5, d];
+      }
+    return best ? [best[0], best[1]] : [x, y];
   };
   // 벽에 막히며 걷기(가로·세로 따로)
   QP.ptMove = function (M, x, y, dx, dy, dist) {
     const L = Math.hypot(dx, dy);
     if (L < 1e-6 || dist <= 0) return [x, y];
-    // 한 번에 0.4칸씩 나눠 걸어 벽을 뚫지 않게
+    // 한 번에 0.4칸씩 나눠 걸어 벽을 뚫지 않게. 어쩌다 벽 속에 있으면 벽 속은 걸어 나올 수 있게(갇히지 않게)
+    const ok = (cx, cy) => M.free(cx, cy) || !M.free(Math.floor(x), Math.floor(y));
     let left = dist;
     while (left > 1e-6) {
       const s = Math.min(0.4, left);
       left -= s;
       const nx = x + (dx / L) * s,
         ny = y + (dy / L) * s;
-      if (M.free(Math.floor(nx), Math.floor(y)) && nx > 0.3 && nx < PT.W - 0.3) x = nx;
-      if (M.free(Math.floor(x), Math.floor(ny)) && ny > 0.3 && ny < PT.H - 0.3) y = ny;
+      if (ok(Math.floor(nx), Math.floor(y)) && nx > 0.3 && nx < PT.W - 0.3) x = nx;
+      if (ok(Math.floor(x), Math.floor(ny)) && ny > 0.3 && ny < PT.H - 0.3) y = ny;
     }
     return [x, y];
+  };
+  // 친구 인형을 부드럽게 따라가기: 새 위치가 오면 FOLLOW_S 초 동안 같은 빠르기로 걸어간다.
+  // (예전엔 새 위치 쪽으로 확 다가갔다 멈추기를 1초 3번 해서 뚝뚝 끊겨 보였다 — 2026-11-10 담임)
+  // s = {x, y, f(걸음), dir} 를 고친다. 처음이면 그 자리에 둔다.
+  const FOLLOW_S = 0.45;
+  QP.ptFollow = function (s, tx, ty, dt) {
+    if (s.tx !== tx || s.ty !== ty) {
+      s.tx = tx;
+      s.ty = ty;
+      const d = Math.hypot(tx - s.x, ty - s.y);
+      if (d > 6) {
+        s.x = tx; // 너무 멀면(새로 고침 등) 바로 옮김
+        s.y = ty;
+        s.v = 0;
+      } else s.v = d / FOLLOW_S;
+    }
+    const dx = s.tx - s.x,
+      dy = s.ty - s.y,
+      d = Math.hypot(dx, dy);
+    if (d < 1e-4) return;
+    const st = Math.min(d, (s.v || 0) * dt);
+    if (Math.abs(dx) > 0.01) s.dir = dx > 0 ? 1 : -1;
+    s.x += (dx / d) * st;
+    s.y += (dy / d) * st;
+    s.f += st * 2.2;
   };
   // 서버로 보낼 정수(규칙: 0~200)
   QP.ptEnc = (x, y) => [Math.max(0, Math.min(200, Math.round(x * 3))), Math.max(0, Math.min(200, Math.round(y * 5)))];
@@ -192,6 +230,15 @@
   QP.PaintBoard = PaintBoard;
 
   // 판 결과: 가장 높은 %인 팀(들)이 1승
+  // 판 점수: 칠한 % 순위대로 (같은 %면 같은 등수·같은 점수, 하나도 못 칠하면 0점)
+  QP.PT_POINTS = [10, 8, 6, 4];
+  QP.ptRanks = function (pc) {
+    return pc.map((v) => 1 + pc.filter((w) => w > v + 1e-9).length);
+  };
+  QP.ptRoundPts = function (pc) {
+    const rk = QP.ptRanks(pc);
+    return pc.map((v, t) => (v > 0 ? QP.PT_POINTS[rk[t] - 1] || 2 : 0));
+  };
   QP.ptWinners = function (pc) {
     const best = Math.max(...pc);
     if (best <= 0) return [];

@@ -722,8 +722,10 @@
       const cls = (v) => (sent && C.sent.v === v ? ' picked' : chosen === v ? ' chosen' : '');
       if (q.type === 'choice') ans = '<div class="answers n' + q.ch.length + '">' + q.ch.map((c, i) => '<button data-ans="' + esc(c) + '" data-k="' + (i + 1) + '" class="' + cls(c).trim() + '">' + esc(c) + '</button>').join('') + '</div>';
       else if (q.type === 'ox') ans = '<div class="answers ox"><button data-ans="O" class="o' + cls('O') + '">O</button><button data-ans="X" class="x' + cls('X') + '">X</button></div>';
-      if ((q.type === 'choice' || q.type === 'ox') && !sent) ans += '<div class="pickbar" id="pickbar"' + (chosen === null ? ' hidden' : '') + '><button class="gobtn" data-act="submit">내기 ✓</button><span>잘못 골랐으면 다른 보기를 눌러요</span></div>';
-      else ans = '<div class="shortbox"><div class="shortv" id="sv">' + (esc(shortBuf) || '&nbsp;') + '</div>' + keypad('sk', q.type === 'short' ? '.' : '') + '<button class="go" data-act="short">내기</button></div>';
+      // 보기 문제는 낸 뒤엔 아무것도 더 안 붙인다(예전엔 낸 뒤 보기 대신 숫자 칸이 떴다 — 2026-11-10 교실)
+      if (q.type === 'choice' || q.type === 'ox') {
+        if (!sent) ans += '<div class="pickbar" id="pickbar"' + (chosen === null ? ' hidden' : '') + '><button class="gobtn" data-act="submit">내기 ✓</button><span>잘못 골랐으면 다른 보기를 눌러요</span></div>';
+      } else ans = '<div class="shortbox"><div class="shortv" id="sv">' + (esc(shortBuf) || '&nbsp;') + '</div>' + keypad('sk', q.type === 'short' ? '.' : '') + '<button class="go" data-act="short">내기</button></div>';
       return (
         '<div class="qcard' + (q.type === 'short' ? ' left' : '') + '"><div class="tag">' + (q.test ? '<span class="test">시험용</span>' : '') + '<span>' + r + '라운드</span></div>' +
         (q.img ? '<img class="qimg" src="' + esc(q.img) + '" alt="">' : '') + '<div class="q">' + esc(q.q) + '</div></div>' +

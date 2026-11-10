@@ -173,6 +173,18 @@
       Y = Math.round(k.y * C);
     g.fillStyle = 'rgba(40,25,10,.25)';
     g.fillRect(X - 10, Y + 7, 20, 4);
+    if (k.me) {
+      // 내 인형: 발밑에 노란 고리(숨 쉬듯 커졌다 작아짐) — 같은 팀 친구와 헷갈리지 않게 (2026-11-10 담임)
+      const pr = 1 + 0.12 * Math.sin(now / 160);
+      g.lineWidth = 6;
+      g.strokeStyle = '#1a120b';
+      g.beginPath();
+      g.ellipse(X, Y + 8, 24 * pr, 11 * pr, 0, 0, 6.283);
+      g.stroke();
+      g.lineWidth = 4;
+      g.strokeStyle = '#ffe36a';
+      g.stroke();
+    }
     g.save();
     g.translate(X, Y - fr.height * s + 10);
     if (k.dir < 0) g.scale(-1, 1);
@@ -194,13 +206,23 @@
       g.fillRect(X - 4, top - 10 - (Math.floor(now / 200) % 2) * 3, 8, 2);
     }
     if (k.me) {
-      g.font = '18px QPTitle';
-      g.textAlign = 'center';
-      g.lineWidth = 4;
-      g.strokeStyle = '#000';
+      // 머리 위 통통 튀는 화살표 + 「나」(항아리 표시보다 위에)
+      const by = top - 16 - Math.abs(Math.sin(now / 220)) * 6;
       g.fillStyle = '#ffe36a';
-      g.strokeText('나', X, top - 14);
-      g.fillText('나', X, top - 14);
+      g.strokeStyle = '#1a120b';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(X - 11, by - 11);
+      g.lineTo(X + 11, by - 11);
+      g.lineTo(X, by);
+      g.closePath();
+      g.stroke();
+      g.fill();
+      g.font = '28px QPTitle';
+      g.textAlign = 'center';
+      g.lineWidth = 5;
+      g.strokeText('나', X, by - 15);
+      g.fillText('나', X, by - 15);
     }
   }
   // 먹물 항아리 「철퍼덕!」: b = {x, y, t0(ms)}, col

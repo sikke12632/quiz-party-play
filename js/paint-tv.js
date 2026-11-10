@@ -121,13 +121,7 @@
         const q = L.pos && L.pos[m.sid];
         if (!q) continue;
         const s = shown[m.sid] || (shown[m.sid] = { x: q[0] / 10, y: q[1] / 10, f: 0, dir: 1 });
-        const k = Math.min(1, dt * 7);
-        const nx = s.x + (q[0] / 10 - s.x) * k,
-          ny = s.y + (q[1] / 10 - s.y) * k;
-        if (Math.abs(nx - s.x) > 0.005) s.dir = nx > s.x ? 1 : -1;
-        s.f += Math.hypot(nx - s.x, ny - s.y) * 2.2;
-        s.x = nx;
-        s.y = ny;
+        QP.ptFollow(s, q[0] / 10, q[1] / 10, dt);
       }
       const bm = L.bm || [];
       for (; seenBm < bm.length; seenBm++) splats.push({ x: bm[seenBm][0] / 10, y: bm[seenBm][1] / 10, t0: now, t: bm[seenBm][2] });
@@ -193,6 +187,7 @@
     let head = '',
       sub = '';
     const lastR = T.log[T.log.length - 1] || [];
+    const ptsOf = (t) => (T.pts ? T.pts[t] : T.tot[t]) || 0;
     if (ph === 'question' || ph === 'reveal') {
       const k = c.per - (((S.round - 1) % c.per) + 1);
       const got = ref.seatList().filter((s) => s.cur && s.cur.r === S.round);
@@ -200,13 +195,13 @@
       sub = (ph === 'question' ? '문제 푸는 중 <b>' + left + '</b>초 · 답한 친구 ' + got.filter((s) => s.ans).length + ' / ' + got.length : '정답 보는 중') + ' · ' + (k ? '색칠까지 <b>' + k + '</b>문제 (' + QP.PT_MAPNAME[QP.ptMapKey(T.mg)] + ')' : '이제 <b>색칠 대작전!</b>');
     } else if (ph === 'dres') {
       const w = lastR.filter((x) => x.win);
-      head = '<h1>' + (w.length === 1 ? esc(QP.teamName(T.order[w[0].t])) + ' 승리!' : w.length ? '공동 승리!' : '비겼어요!') + '</h1>';
+      head = '<h1>' + (w.length === 1 ? esc(QP.teamName(T.order[w[0].t])) + ' 1등!' : w.length ? '공동 1등!' : '비겼어요!') + '</h1>';
       sub = T.mg >= c.M ? '곧 최종 결과!' : '다음 문제까지 <b>' + left + '</b>초';
     } else if (ph === 'end') {
       head = '<h1>최종 결과</h1>';
-      sub = '이긴 판 수 → 같으면 칠한 % 합';
+      sub = '점수 합(판마다 1등 10 · 2등 8 · 3등 6 · 4등 4) → 같으면 칠한 % 합';
     }
-    const order = ph === 'end' ? ref.teamBoard().map((x) => x.t) : T.order.map((_, t) => t).sort((a, b) => T.wins[b] - T.wins[a] || T.pcs[b] - T.pcs[a]);
+    const order = ph === 'end' ? ref.teamBoard().map((x) => x.t) : T.order.map((_, t) => t).sort((a, b) => ptsOf(b) - ptsOf(a) || T.pcs[b] - T.pcs[a]);
     const body = order
       .map((t, i) => {
         const seats = ref.teamSeats(t),
@@ -217,12 +212,12 @@
         if (ph === 'question' || ph === 'reveal') {
           const max = Math.max(1, seats.length * c.per);
           mid = '<div class="trpow"><span>모은 걸음</span><span class="bar"><i style="width:' + Math.round((100 * blk) / max) + '%"></i></span><em>맞힌 문제 ' + blk + '</em></div>';
-        } else if (ph === 'dres' && lr) mid = '<div class="ptpc">이번 판 <b style="color:' + col.col + '">' + lr.pc + '%</b></div>';
+        } else if (ph === 'dres' && lr) mid = '<div class="ptpc">이번 판 <b style="color:' + col.col + '">' + lr.pc + '%</b> · ' + (lr.rk || '-') + '등 <b>+' + (lr.pt || 0) + '점</b></div>';
         else mid = '<div class="ptpc">칠한 % 합 <b style="color:' + col.col + '">' + Math.round(T.pcs[t]) + '</b></div>';
-        return '<div class="row' + (i === 0 && T.wins[t] > 0 ? ' first' : '') + '"><div class="rk">' + (i + 1) + '</div><img class="ic" src="' + window.PX.icon(an(ref, t), 0, 64) + '" alt=""><div class="nm"><span class="ptsw" style="background:' + col.col + '"></span>' + esc(QP.teamName(T.order[t])) + '<small>' + seats.length + '명</small></div>' + mid + '<div class="ptwins">' + T.wins[t] + '승<small>' + c.M + '판 중</small></div></div>';
+        return '<div class="row' + (i === 0 && ptsOf(t) > 0 ? ' first' : '') + '"><div class="rk">' + (i + 1) + '</div><img class="ic" src="' + window.PX.icon(an(ref, t), 0, 64) + '" alt=""><div class="nm"><span class="ptsw" style="background:' + col.col + '"></span>' + esc(QP.teamName(T.order[t])) + '<small>' + seats.length + '명</small></div>' + mid + '<div class="ptwins">' + ptsOf(t) + '점<small>' + Math.min(T.mg, c.M) + ' / ' + c.M + '판</small></div></div>';
       })
       .join('');
-    const foot = ph === 'end' ? '<div class="endbtns"><button class="go" data-tr="res">결과표 보기</button><button class="ghost" data-tr="new">새 판</button></div>' : '<div class="foot">문제를 많이 맞힐수록 색칠 때 빨리 걸어요 · 칠한 넓이가 가장 큰 팀이 그 판 승리</div>';
+    const foot = ph === 'end' ? '<div class="endbtns"><button class="go" data-tr="res">결과표 보기</button><button class="ghost" data-tr="new">새 판</button></div>' : '<div class="foot">문제를 많이 맞힐수록 색칠 때 빨리 걸어요 · 판마다 칠한 넓이 순서로 1등 10점 · 2등 8점 · 3등 6점 · 4등 4점</div>';
     const h = '<div class="head">' + head + '<p>' + sub + '</p></div><div class="rows n' + T.order.length + '">' + body + '</div>' + foot;
     if (h !== sig) {
       sig = h;
